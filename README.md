@@ -1,5 +1,5 @@
 # Job Skills Insight Dashboard
-Marwan WAS HERE
+
 ## 🚀 Project Overview
 
 This project analyzes job postings and labor reports to extract in-demand skills, map them to industry-recognized certifications, and present the insights via a dashboard. The goal is to help institutions align their curriculum with real-world market needs.
