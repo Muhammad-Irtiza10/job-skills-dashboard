@@ -1,7 +1,3 @@
-Environment Setup & Dependency List
-
-1. Python Backend & NLP Environment
------------------------------------
 fastapi
 uvicorn[standard]
 pandas
@@ -23,48 +19,9 @@ faiss-cpu
 python-dotenv
 loguru
 pytest
-docker
-azure-cli
-helm
 pydantic
 python-jose
 cryptography
 black
 flake8
 isort
-
-2. JavaScript Frontend Environment
-----------------------------------
-react
-react-dom
-axios
-typescript           # if using TS
-webpack or vite
-chart.js
-react-chartjs-2
-plotly.js
-react-select
-zustand or redux     # optional state management
-tailwindcss
-autoprefixer
-postcss
-jest
-react-testing-library or enzyme
-eslint
-prettier
-
-3. System & Environment Tools
------------------------------
-Python 3.10+
-Node.js 16+ (LTS)
-npm or yarn
-Git
-Docker Engine & Docker Compose
-Azure CLI
-GitHub CLI (optional)
-
-4. Optional/Supporting Tools
-----------------------------
-Redis or Memcached      # caching
-NGINX                   # reverse proxy
-Prometheus & Grafana    # monitoring
