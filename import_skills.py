@@ -4,6 +4,13 @@ import re
 import fitz                     # PyMuPDF for PDF reading
 import spacy
 from spacy.matcher import PhraseMatcher
+from spacy.util import get_package_path, is_package
+from spacy.cli import download as spacy_download
+
+MODEL_NAME = "en_core_web_sm"
+if not is_package(MODEL_NAME):
+    spacy_download(MODEL_NAME)
+nlp = spacy.load(MODEL_NAME)
 
 # ─── DJANGO SETUP ───────────────────────────────────────────────────────────────
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "skillgap_project.settings")
@@ -113,3 +120,4 @@ for skill_name in sorted(found):
     print(f"{'+' if created else '*'} {skill_name}")
 
 print("✔ Done. Major.skills now exactly matches your PhraseMatcher hits.")
+
