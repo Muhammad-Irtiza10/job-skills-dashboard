@@ -2,8 +2,8 @@ from django.db import models
 from django.conf import settings
 
 class Major(models.Model):
-    name        = models.CharField(max_length=100, unique=True)
-    department  = models.CharField(max_length=100, blank=True)
+    name        = models.CharField(max_length=200, unique=True)
+    department  = models.CharField(max_length=200, blank=True)
     description = models.TextField(blank=True)
 
     # baseline skills every student in this major should acquire
