@@ -1,56 +1,42 @@
 from django.db import models
 from django.conf import settings
 
-class Major(models.Model):
-    name        = models.CharField(max_length=200, unique=True)
-    department  = models.CharField(max_length=200, blank=True)
-    description = models.TextField(blank=True)
-
-    # baseline skills every student in this major should acquire
-    skills      = models.ManyToManyField(
-        'Skill',
-        related_name='majors',
-        blank=True
+class Skill(models.Model):
+    """
+    A single skill or competency. We keep one central Skill table,
+    but each Major, JobPosting, Certification, and Course links to it
+    via its own ManyToManyField.
+    """
+    name = models.CharField(max_length=100, unique=True)
+    frequency = models.PositiveIntegerField(
+        default=0,
+        help_text="(Optional) How often this skill appears in job data"
+    )
+    clusters = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="(Optional) Comma-separated tags or related skill clusters"
     )
 
     def __str__(self):
         return self.name
 
 
-class Concentration(models.Model):
-    major       = models.ForeignKey(
-        Major,
-        on_delete=models.CASCADE,
-        related_name='concentrations'
-    )
-    name        = models.CharField(max_length=100)
+class Major(models.Model):
+    """
+    Represents an academic major. Each major has its own set of Skills
+    (from the catalog) that any student in this major is assumed to have.
+    """
+    name = models.CharField(max_length=200, unique=True)
+    department = models.CharField(max_length=200, blank=True)
     description = models.TextField(blank=True)
 
-    # skills specific to this track
-    skills      = models.ManyToManyField(
-        'Skill',
-        related_name='concentrations',
-        blank=True
-    )
-
-    class Meta:
-        unique_together = ('major', 'name')
-        verbose_name_plural = 'concentrations'
-
-    def __str__(self):
-        return f"{self.major.name} → {self.name}"
-
-
-class Skill(models.Model):
-    name      = models.CharField(max_length=100, unique=True)
-    frequency = models.PositiveIntegerField(
-        default=0,
-        help_text="(Optional) How often this skill appears in job data"
-    )
-    clusters  = models.CharField(
-        max_length=200,
+    # ←−− Major.skills is a separate M2M to Skill
+    skills = models.ManyToManyField(
+        Skill,
+        related_name='majors',
         blank=True,
-        help_text="(Optional) Semantically related skill clusters or tags"
+        help_text="Baseline skills every student in this major should acquire"
     )
 
     def __str__(self):
@@ -58,65 +44,117 @@ class Skill(models.Model):
 
 
 class Course(models.Model):
-    code          = models.CharField(max_length=20, blank=True)
-    name          = models.CharField(max_length=200)
-    description   = models.TextField(blank=True)
-    credits       = models.DecimalField(
+    """
+    An elective course offered under a Major. Each elective has its own
+    set of Skills that it teaches or reinforces.
+    """
+    code = models.CharField(max_length=20, blank=True)
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    credits = models.DecimalField(
         max_digits=4,
         decimal_places=1,
         null=True,
         blank=True
     )
-    major         = models.ForeignKey(
+    major = models.ForeignKey(
         Major,
         on_delete=models.CASCADE,
-        related_name='courses'
-    )
-    concentration = models.ForeignKey(
-        Concentration,
-        on_delete=models.CASCADE,
-        related_name='courses',
-        null=True,
-        blank=True
-    )
-    skills        = models.ManyToManyField(
-        Skill,
-        related_name='courses',
-        blank=True
+        related_name='electives'
     )
 
+    # ←−− Course.skills is a separate M2M to Skill
+    skills = models.ManyToManyField(
+        Skill,
+        related_name='elective_courses',
+        blank=True,
+        help_text="Skills taught or reinforced by this elective"
+    )
+
+    class Meta:
+        unique_together = ('major', 'code')
+
     def __str__(self):
-        return f"{self.code} - {self.name}" if self.code else self.name
+        return f"{self.code} – {self.name}" if self.code else self.name
 
 
 class Certification(models.Model):
-    name            = models.CharField(max_length=200)
-    provider        = models.CharField(max_length=100, blank=True)
+    """
+    An external certification that maps to one or more Skills.
+    We will suggest certifications to fill in gaps when a student lacks certain skills.
+    """
+    name = models.CharField(max_length=200)
+    provider = models.CharField(max_length=100, blank=True)
+    url = models.URLField(
+        blank=True,
+        help_text="(Optional) Link to certification details"
+    )
     relevance_score = models.FloatField(
         default=0.0,
-        help_text="(Optional) How closely this cert maps to job-market demand"
+        help_text="(Optional) How closely this cert maps to market demand"
     )
-    skills          = models.ManyToManyField(
+
+    # ←−− Certification.skills is a separate M2M to Skill
+    skills = models.ManyToManyField(
         Skill,
         related_name='certifications',
-        blank=True
+        blank=True,
+        help_text="Skills obtained or tested by this certification"
     )
+
+    class Meta:
+        unique_together = ('name', 'provider')
 
     def __str__(self):
         return f"{self.name} ({self.provider})" if self.provider else self.name
 
 
+class JobField(models.Model):
+    """
+    A broad job category (e.g. 'Software Engineering', 'Data Science'). 
+    Students pick a JobField, then we match job postings under that field.
+    """
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+
+
 class JobPosting(models.Model):
-    title        = models.CharField(max_length=200)
-    industry     = models.CharField(max_length=100, blank=True)
-    location     = models.CharField(max_length=200, blank=True)
-    description  = models.TextField()
-    date_posted  = models.DateField(null=True, blank=True)
-    skills       = models.ManyToManyField(
+    title = models.CharField(max_length=200)
+    job_field = models.ForeignKey(
+        JobField,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='job_postings'
+    )
+    location = models.CharField(max_length=200, blank=True)
+
+    # Allow NULL/blank so migrations don’t force a default on existing rows
+    raw_description = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Original text scraped from job site"
+    )
+    cleaned_description = models.TextField(
+        blank=True,
+        help_text="Processed/cleaned version (strip HTML, etc.)"
+    )
+    date_posted = models.DateField(null=True, blank=True)
+
+    skills = models.ManyToManyField(
         Skill,
         related_name='job_postings',
-        blank=True
+        blank=True,
+        help_text="Skills required by this job (parsed from description)"
     )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['title', 'job_field']),
+        ]
 
     def __str__(self):
         return self.title
@@ -124,35 +162,32 @@ class JobPosting(models.Model):
 
 class StudentProfile(models.Model):
     """
-    Extend Django's built-in User to track academic and skill data.
+    Extends Django's User to include academic and skill data.
+    - A student's initial skills come from their Major (Major.skills)
+    - Later, when they complete electives or certifications, you add those Skills to their profile.
     """
-    user          = models.OneToOneField(
+    user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='profile'
     )
-    major         = models.ForeignKey(
+    major = models.ForeignKey(
         Major,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='students'
     )
-    concentration = models.ForeignKey(
-        Concentration,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='students'
-    )
-    skills        = models.ManyToManyField(
+
+    # ←−− StudentProfile.skills is a separate M2M to Skill
+    skills = models.ManyToManyField(
         Skill,
         related_name='students',
-        blank=True
+        blank=True,
+        help_text="Actual skills this student has (from major, electives, certifications)"
     )
-    date_joined   = models.DateField(auto_now_add=True)
+
+    date_joined = models.DateField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.get_full_name() or self.user.username}"
-
-
+        return self.user.get_full_name() or self.user.username
