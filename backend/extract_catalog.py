@@ -138,7 +138,12 @@ if not skill_file.exists():
     print(f"\n👉  Copy the good ones into {skill_file} (one per line) and rerun.")
     sys.exit(0)
 
-SKILL_TERMS = [line.strip().lower() for line in skill_file.read_text().splitlines() if line.strip()]
+SKILL_TERMS = [
+    line.strip().lower()
+    for line in skill_file.read_text(encoding="utf-8").splitlines()
+    if line.strip()
+]
+
 
 # ─── 5) PhraseMatcher against curated list ────────────────────────────────────
 nlp     = spacy.load("en_core_web_sm")

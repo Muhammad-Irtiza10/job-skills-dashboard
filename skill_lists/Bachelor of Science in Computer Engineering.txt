@@ -1,0 +1,35 @@
+Circuit Design
+Digital System Design
+Microprocessor Programming
+Embedded Systems Design
+Operating System Fundamentals
+Software Engineering
+Data Structures and Algorithms
+Database Systems
+Data Communications
+Computer Networks
+Internet of Things
+Artificial Intelligence Basics
+Signals and Systems Analysis
+Linear Electronics
+Digital Electronics
+Microprocessor Laboratory Skills
+Embedded Systems Laboratory Skills
+Database Management
+Network Security
+Parallel Programming
+Programming in Object-Oriented Languages
+Software Development
+Hardware-Software Integration
+Digital Logic Design
+Microcontrollers
+Signal Processing
+Data Communications Laboratory Skills
+Computer Architecture
+Systems Analysis
+Control Systems
+Computer Programming 
+Linux/Unix System Concepts
+3D CAD for Hardware Design
+LabVIEW  
+Prototyping
