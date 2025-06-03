@@ -3,48 +3,53 @@
 import os
 import time
 from django.core.management.base import BaseCommand
-from django.conf import settings
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.edge.service import Service as EdgeService
+from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
+
 from catalog.models import JobField, JobPosting, Skill
 
-# ←–– Assumes you have a function that, given a block of text,
-#     returns a Python list of skill‐strings, e.g. ["Python", "Django", "AWS"]
-#     You can replace this stub with your actual NLP pipeline call.
+
 def extract_skills_from_text(cleaned_text: str) -> list[str]:
     """
-    Stub: call your real NLP skill extractor here.
-    E.g. return my_nlp_pipeline.extract_skills(cleaned_text)
+    TODO: Replace this stub with your actual NLP pipeline.
+    It should return a list of normalized skill names 
+    extracted from the job’s plain‐text description.
     """
-    # For demo purposes, let’s pretend every time we see the word "Python"
-    # in the text, we tag the skill "Python". In reality, you’d call your
-    # trained NLP pipeline (maybe spaCy + custom model, or any other).
     skills = []
-    if "Python" in cleaned_text:
+    text_lower = cleaned_text.lower()
+    if "python" in text_lower:
         skills.append("Python")
-    if "Django" in cleaned_text:
+    if "django" in text_lower:
         skills.append("Django")
-    # … etc …
+    if "aws" in text_lower or "amazon web services" in text_lower:
+        skills.append("AWS")
+    # … add your own rules or call your real model …
     return list(set(skills))
 
 
 class Command(BaseCommand):
-    help = "Fetches job postings from LinkedIn and saves raw/cleaned descriptions + skills."
+    help = (
+        "Logs into LinkedIn, searches for jobs, "
+        "scrapes raw/cleaned descriptions, extracts skills, "
+        "and stores everything in the DB."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--query",
             type=str,
             default="Software Engineer",
-            help="Search query for job title (e.g. 'Data Scientist')",
+            help="Job title/keywords (e.g. 'Data Scientist')",
         )
         parser.add_argument(
             "--location",
             type=str,
             default="United Arab Emirates",
-            help="Location for the job search (e.g. 'Dubai, UAE')",
+            help="Location string for the search (e.g. 'Dubai, UAE')",
         )
         parser.add_argument(
             "--jobfield",
@@ -65,120 +70,125 @@ class Command(BaseCommand):
         jobfield_name = options["jobfield"]
         max_jobs = options["max_jobs"]
 
-        # 1) Get or create the JobField in the database
+        # 1) Ensure we have a JobField object in the DB
         job_field_obj, _ = JobField.objects.get_or_create(name=jobfield_name)
 
-        # 2) Configure Selenium (headless Chrome)
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--window-size=1920,1080")
+        # 2) EdgeDriver setup: point to your msedgedriver.exe
+        EDGE_DRIVER_PATH = r"C:\Users\aurakcyber5\Downloads\edgedriver_win32\msedgedriver.exe"
+        service = EdgeService(executable_path=EDGE_DRIVER_PATH)
 
-        # Set the CHROMEDRIVER_BINARY (adjust path if needed)
-        chromedriver_path = os.getenv("CHROMEDRIVER_PATH", "/usr/local/bin/chromedriver")
-        driver = webdriver.Chrome(executable_path=chromedriver_path, options=chrome_options)
+        # 3) Edge options (headless, window size, etc.)
+        edge_options = EdgeOptions()
+        edge_options.use_chromium = True
+        edge_options.add_argument("--disable-gpu")
+        edge_options.add_argument("--window-size=1920,1080")
+
+        driver = webdriver.Edge(service=service, options=edge_options)
 
         try:
-            # 3) Navigate to LinkedIn Jobs search page (example URL structure):
-            #    https://www.linkedin.com/jobs/search/?keywords=Software%20Engineer&location=UAE
-            #    In practice, you must be logged in. You can reuse cookies or do a login step.
+            # —— 4) Log in to LinkedIn ——
+            linkedin_user = os.getenv("LINKEDIN_USER")
+            linkedin_pass = os.getenv("LINKEDIN_PASS")
+            if not linkedin_user or not linkedin_pass:
+                self.stderr.write("ERROR: Please set LINKEDIN_USER and LINKEDIN_PASS in env.")
+                return
 
-            url = (
+            driver.get("https://www.linkedin.com/login")
+            time.sleep(2)
+
+            # Locate username/password fields, fill them, and submit
+            email_elem = driver.find_element(By.ID, "username")
+            password_elem = driver.find_element(By.ID, "password")
+            email_elem.clear()
+            email_elem.send_keys(linkedin_user)
+            password_elem.clear()
+            password_elem.send_keys(linkedin_pass)
+            password_elem.send_keys(Keys.ENTER)
+
+            time.sleep(5)  # wait for login to finalize
+
+            # Verify login by checking URL change
+            if "login" in driver.current_url:
+                self.stderr.write("ERROR: LinkedIn login failed. Double-check creds.")
+                return
+            self.stdout.write(self.style.SUCCESS("✅ LinkedIn login successful."))
+
+            # —— 5) Navigate to the Jobs search page ——
+            # Example search URL structure:
+            search_url = (
                 "https://www.linkedin.com/jobs/search/"
                 f"?keywords={query.replace(' ', '%20')}"
                 f"&location={location.replace(' ', '%20')}"
             )
-            self.stdout.write(f"→ Opening LinkedIn Jobs search: {url}")
-            driver.get(url)
+            self.stdout.write(f"→ Opening LinkedIn Jobs search: {search_url}")
+            driver.get(search_url)
+            time.sleep(5)
 
-            # 4) OPTIONAL: If you need to log in first (only if not already logged in):
-            #    You can do something like:
-            #
-            #    username_in = driver.find_element(By.ID, "session_key")
-            #    password_in = driver.find_element(By.ID, "session_password")
-            #    username_in.send_keys(os.getenv("LINKEDIN_USER"))
-            #    password_in.send_keys(os.getenv("LINKEDIN_PASS"))
-            #    driver.find_element(By.XPATH, '//button[@type="submit"]').click()
-            #    time.sleep(3)
-            #
-            #    For now, assume you have a cookie/session already loaded.
-
-            time.sleep(5)  # let the page load and render
-
-            # 5) Scroll down a bit so more job listings load (LinkedIn is infinite-scroll).
-            SCROLL_PAUSE_SEC = 2
+            # —— 6) Scroll down to load more results (infinite scroll) ——
+            SCROLL_PAUSE = 2
             last_height = driver.execute_script("return document.body.scrollHeight")
             while True:
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(SCROLL_PAUSE_SEC)
+                time.sleep(SCROLL_PAUSE)
                 new_height = driver.execute_script("return document.body.scrollHeight")
                 if new_height == last_height:
                     break
                 last_height = new_height
 
-            # 6) Now grab all job cards on this page
+            # —— 7) Collect job cards from the results list ——
             job_cards = driver.find_elements(By.CSS_SELECTOR, "ul.jobs-search__results-list li")
-
             scraped_count = 0
+
             for card in job_cards:
                 if scraped_count >= max_jobs:
                     break
 
+                # Each card has a link to the job detail page
                 try:
-                    # Each card contains a link to the job detail page
-                    job_link_elem = card.find_element(By.CSS_SELECTOR, "a.result-card__full-card-link")
-                    job_url = job_link_elem.get_attribute("href")
+                    link_elem = card.find_element(By.CSS_SELECTOR, "a.result-card__full-card-link")
+                    job_url = link_elem.get_attribute("href")
                 except Exception:
                     continue
 
-                # Check if this URL is already in our DB
+                # Skip if we already have this URL stored (checking raw_description)
                 if JobPosting.objects.filter(raw_description=job_url).exists():
-                    # We’ll use raw_description temporarily to store the URL as a uniqueness check.
                     continue
 
-                # 7) Click or navigate to this job’s detail page
+                # —— 8) Visit the job detail page ——
                 driver.get(job_url)
-                time.sleep(3)  # wait for detail to render
+                time.sleep(3)
 
-                # 8) Extract the raw HTML for the job description area
-                #    LinkedIn’s job description is often in a <div class="description__text"> or similar.
-                page_source = driver.page_source
-                soup = BeautifulSoup(page_source, "html.parser")
+                page_html = driver.page_source
+                soup = BeautifulSoup(page_html, "html.parser")
 
-                # Attempt to locate the job description container:
-                desc_container = soup.select_one("div.description__text") or \
-                                 soup.select_one("div.jobs-description__container") or \
-                                 soup.select_one("div.jobs-description-content__text")
-                if not desc_container:
-                    # If LinkedIn changes their DOM, adjust selectors accordingly
-                    raw_html = ""
-                else:
-                    raw_html = str(desc_container)  # includes tags
+                # LinkedIn’s description container classes:
+                desc_div = (
+                    soup.select_one("div.description__text")
+                    or soup.select_one("div.jobs-description__container")
+                    or soup.select_one("div.jobs-description-content__text")
+                )
+                raw_html = str(desc_div) if desc_div else ""
+                cleaned_text = (
+                    BeautifulSoup(raw_html, "html.parser")
+                    .get_text(separator="\n")
+                    .strip()
+                    if raw_html
+                    else ""
+                )
 
-                # 9) Clean the HTML to plain text
-                cleaned_text = ""
-                if raw_html:
-                    # Use BeautifulSoup to strip tags
-                    cleaned_text = (
-                        BeautifulSoup(raw_html, "html.parser")
-                        .get_text(separator="\n")
-                        .strip()
-                    )
-
-                # 10) Save into JobPosting model
+                # —— 9) Create & save the JobPosting record ——
                 job_posting = JobPosting.objects.create(
                     title=card.text.split("\n")[0] or "N/A",
                     job_field=job_field_obj,
                     location=location,
-                    raw_description=raw_html or job_url,   # store the raw HTML snippet (or fallback to URL)
+                    raw_description=raw_html or job_url,
                     cleaned_description=cleaned_text,
                 )
 
-                # 11) Run your NLP skill extractor on cleaned_text
+                # —— 10) Run your NLP pipeline on cleaned_text ——
                 found_skills = extract_skills_from_text(cleaned_text)
 
-                # 12) For each skill string, get_or_create the Skill object in DB, then M2M
+                # —— 11) Save each extracted skill to Skill table, M2M-attach it ——
                 for skill_name in found_skills:
                     skill_obj, _ = Skill.objects.get_or_create(name=skill_name)
                     job_posting.skills.add(skill_obj)
@@ -186,15 +196,16 @@ class Command(BaseCommand):
                 job_posting.save()
                 scraped_count += 1
 
-                # 13) Go back to the main listing page so we can pick the next card
+                # Go back to the search results page to pick the next card
                 driver.back()
                 time.sleep(2)
 
             self.stdout.write(self.style.SUCCESS(
-                f"Successfully scraped {scraped_count} job postings for '{query}' in '{location}'."
+                f"✅ Scraped {scraped_count} job postings for '{query}' in '{location}'."
             ))
 
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f"Error during scraping: {e}"))
+            self.stderr.write(f"ERROR during scraping: {e}")
+
         finally:
             driver.quit()
