@@ -132,6 +132,12 @@ class JobPosting(models.Model):
     )
     location = models.CharField(max_length=200, blank=True)
 
+    company_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Name of the company offering this job"
+    )
+
     # Allow NULL/blank so migrations don’t force a default on existing rows
     raw_description = models.TextField(
         null=True,

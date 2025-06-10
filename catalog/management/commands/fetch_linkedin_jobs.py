@@ -298,6 +298,14 @@ class Command(BaseCommand):
                 )
                 job_title = title_elem.get_text(strip=True) if title_elem else "N/A"
 
+                # Extract company name
+                # LinkedIn uses several patterns; try both:
+                comp_elem = (
+                    soup.select_one("a.topcard__org-name-link")  # most modern
+                    or soup.select_one("span.topcard__flavor")    # fallback
+                )
+                company_name = comp_elem.get_text(strip=True) if comp_elem else ""
+
                 # 11) Extract raw & cleaned job description
                 desc_div = (
                     soup.select_one("div.show-more-less-html__markup")
@@ -329,6 +337,7 @@ class Command(BaseCommand):
                 # 15) Save data in memory for optional DB persistence
                 scraped_jobs.append({
                     "title": job_title,
+                    "company_name": company_name,
                     "location": location,
                     "raw_html": raw_html,
                     "cleaned_text": cleaned_text,
@@ -359,11 +368,12 @@ class Command(BaseCommand):
 
                     job_posting = JobPosting.objects.create(
                         title=job["title"],
+                        company_name=job["company_name"],
                         job_field=job_field_obj,
                         location=job["location"],
                         raw_description=job["raw_html"] or job["raw_url"],
                         cleaned_description=job["cleaned_text"],
-                        date_posted=job["date_posted"],
+                        date_posted=job["date_posted"],                  
                     )
                     for skill_name in job["skills"]:
                         skill_obj, _ = Skill.objects.get_or_create(name=skill_name)
