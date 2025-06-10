@@ -126,3 +126,93 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+MAJOR_TO_JOBFIELDS = {
+    # 1) School of Arts and Sciences
+    "Mass Communication": [
+        "Content Writer",
+        "Social Media Manager",
+        "Public Relations Specialist",
+        "Journalist",
+        "Media Coordinator",
+        "Communications Officer",
+    ],
+    "Biotechnology": [
+        "Biotechnologist",
+        "Biomedical Researcher",
+        "Quality Control Analyst",
+        "Lab Technician",
+        "Regulatory Affairs Associate",
+        "Biotech Process Engineer",
+    ],
+
+    # 2) School of Business
+    "Business Administration": [
+        "Financial Analyst",
+        "Marketing Analyst",
+        "HR Specialist",
+        "Operations Manager",
+        "Business Development Manager",
+        "Management Consultant",
+        "Supply Chain Analyst",
+    ],
+
+    # 3) School of Engineering and Computing
+    "Architecture": [
+        "Architect",
+        "Urban Planner",
+        "Landscape Architect",
+        "Interior Designer",
+        "BIM Coordinator",
+    ],
+    "Artificial Intelligence": [
+        "Machine Learning Engineer",
+        "Data Scientist",
+        "AI Researcher",
+        "NLP Engineer",
+        "Computer Vision Engineer",
+    ],
+    "Chemical Engineering": [
+        "Process Engineer",
+        "R&D Engineer",
+        "Safety Engineer",
+        "Quality Control Engineer",
+        "Environmental Engineer",
+    ],
+    "Civil and Infrastructure Engineering": [
+        "Structural Engineer",
+        "Transportation Engineer",
+        "Geotechnical Engineer",
+        "Construction Project Engineer",
+        "Environmental Engineer",
+    ],
+    "Computer Engineering": [
+        "Embedded Systems Engineer",
+        "Hardware Engineer",
+        "Firmware Engineer",
+        "IoT Engineer",
+        "Systems Architect",
+    ],
+    "Computer Science": [
+        "Software Engineer",
+        "Backend Developer",
+        "Frontend Developer",
+        "Full Stack Developer",
+        "DevOps Engineer",
+        "Data Engineer",
+    ],
+    "Electrical and Electronics Engineering": [
+        "Electronics Engineer",
+        "Electrical Design Engineer",
+        "Embedded Systems Engineer",
+        "Control Systems Engineer",
+        "Power Systems Engineer",
+    ],
+    "Mechanical Engineering": [
+        "Mechanical Design Engineer",
+        "Manufacturing Engineer",
+        "HVAC Engineer",
+        "Automotive Engineer",
+        "Robotics Engineer",
+    ],
+}
