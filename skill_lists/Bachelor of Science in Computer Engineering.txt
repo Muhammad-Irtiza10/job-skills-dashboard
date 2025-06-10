@@ -1,0 +1,65 @@
+Arabic speaking
+Arabic listening
+Arabic reading
+Arabic writing
+Python programming
+C programming
+C++ programming
+Assembly language programming
+Instruction set architecture
+Datapath design
+Control unit design
+Pipelining
+Cache design & optimization
+Virtual memory
+Microprocessor simulation (uVision)
+Microcontroller programming
+GPIO interfacing
+PWM signal generation
+ADC interfacing
+DAC interfacing
+Timer & interrupt configuration
+Stepper-motor control
+Hardware description languages (VHDL/Verilog)
+FPGA programming
+Digital logic design
+Sequential & state-machine design
+Embedded C programming
+Real-time systems concepts
+Task scheduling & multitasking
+Low-power embedded design
+Sensor interfacing
+Actuator control
+Hardware–software co-design
+Socket programming
+TCP/IP networking
+Client–server architecture
+Peer-to-peer networking
+Web server configuration
+Load balancing & CDNs
+IPv6, NAT & DHCP
+Multimedia networking
+Cryptographic algorithms
+Authentication & authorization
+Firewall configuration
+Intrusion detection
+Wireless security
+Software engineering principles
+Requirements engineering
+System modeling
+SDLC & version control (Git)
+Algorithm design & analysis
+Data structures
+Object-oriented programming
+Thread- & data-level parallelism
+GPU computing
+Reconfigurable computing
+Interconnection network design
+Digital signal processing basics
+Probability & statistics
+Linear algebra
+Problem solving
+Team collaboration
+Project management
+Technical documentation
+Professional communication

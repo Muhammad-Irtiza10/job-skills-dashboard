@@ -1,0 +1,69 @@
+Arabic speaking
+Arabic listening
+Arabic reading
+Arabic writing
+English speaking
+English listening
+English reading
+English writing
+Python programming
+MATLAB scripting
+VBA programming
+Spreadsheet modeling (Excel)
+Surveying and mapping
+Topographic analysis
+Land surveying & topographic mapping
+AutoCAD drafting
+GIS analysis
+Hydraulics & fluid mechanics
+Soil mechanics
+Geotechnical analysis
+Structural analysis
+Beam & frame design
+Reinforced concrete design
+Masonry design
+Foundation design
+Roof design
+Bridge design
+Steel structure design
+Pavement design
+Highway engineering
+Transportation planning
+Airport engineering
+Water resources engineering
+Wastewater treatment design
+Environmental impact assessment
+Pollution control & management
+Stormwater management
+Infrastructure management
+Infrastructure resilience & security
+Building materials selection
+Construction methods
+Construction documentation
+Building codes compliance
+Quantity surveying & cost estimation
+Project scheduling (MS Project)
+Construction planning
+Construction management
+Contract administration
+Materials testing (concrete, asphalt, soil)
+Quality control in construction
+Sustainability in infrastructure
+Green building strategies
+Natural ventilation design
+Daylighting analysis
+Environmental control systems
+Building energy simulation
+Acoustics design
+Lighting design
+Numerical methods for engineering
+Probability & statistics
+Engineering economics
+Cost estimation
+Project management
+Team collaboration
+Technical communication
+Project documentation
+Research methodology
+Study skills
+Professional ethics in engineering

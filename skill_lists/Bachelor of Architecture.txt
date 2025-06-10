@@ -1,0 +1,59 @@
+Arabic speaking
+Arabic listening
+Arabic reading
+Arabic writing
+Manual sketching
+Technical drawing
+Digital modeling
+3D BIM modeling (Revit)
+Parametric modeling (Dynamo/Grasshopper)
+Generative design
+Residential design
+Interior design
+Space planning
+Landscape design
+Site analysis
+Urban planning
+Architectural design principles
+Vernacular architecture
+Islamic architectural studies
+Historical architectural analysis
+Contemporary architectural theory
+Sustainable design
+Green building strategies
+Natural ventilation design
+Daylighting analysis
+Building materials selection
+Construction methods
+Foundation design
+Roof design
+Structural systems analysis
+Beams and trusses design
+Reinforced concrete design
+Masonry construction
+Surveying and topographic mapping
+HVAC system design
+Building energy simulation
+Acoustics design
+Lighting design
+Environmental control systems
+Construction documentation
+Construction drawings standards
+Building codes compliance
+BIM collaboration workflows
+AutoCAD drafting
+Rhino modeling
+Digital fabrication techniques
+Python scripting for architecture
+MATLAB/VBA for engineering analysis
+Spreadsheet modeling (Excel)
+Cost estimation & economic analysis
+Procurement management
+Contract document preparation
+Project management
+Team collaboration
+Client presentations
+Portfolio development
+Professional ethics in architecture
+Research methods in architecture
+Time management

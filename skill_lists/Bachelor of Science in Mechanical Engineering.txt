@@ -1,0 +1,77 @@
+Arabic speaking
+Arabic listening
+Arabic reading
+Arabic writing
+English speaking
+English listening
+English reading
+English writing
+Python programming
+MATLAB scripting
+VBA programming
+Spreadsheet modeling (Excel)
+Engineering graphics (CAD drafting)
+Manual technical drawing
+3D modeling
+Statics
+Dynamics
+Kinematics
+Kinetics
+Vibration analysis
+Stress analysis
+Strain analysis
+Beam design
+Shaft design
+Machine element design
+Gear train design
+Bearing design
+Control systems modeling
+PID controller design
+Feedback system analysis
+Thermodynamics
+Internal combustion engine cycle analysis
+Heat transfer
+Conduction
+Convection
+Radiation
+Heat exchanger design
+Refrigeration cycle analysis
+Fluid mechanics
+Hydrostatics
+Buoyancy & stability
+Flow regime analysis
+Hydraulics system design
+Computational fluid dynamics basics
+Materials science
+Material properties testing
+Metallurgy fundamentals
+Composite materials
+Chemical kinetics
+Mechanical testing methods (hardness, tensile)
+Manufacturing processes
+Machining operations
+Welding processes
+Metal forming
+Quality control & assurance
+Finite element analysis
+Machine design methodology
+Project management
+Technical report writing
+Experimental design
+Laboratory instrumentation
+Measurement techniques
+Error analysis
+Data analysis & visualization
+Probability & statistics
+Linear algebra
+Matrix algebra & operations
+Calculus
+Differential equations
+Numerical methods
+Engineering economics
+Piping & plumbing basics
+Professional ethics
+Team collaboration
+Communication skills
+Sustainability & environmental considerations
+Entrepreneurial mindset

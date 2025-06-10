@@ -1,0 +1,125 @@
+Arabic speaking
+Arabic listening
+Arabic reading
+Arabic writing
+English speaking
+English listening
+English reading
+English writing
+Python programming
+C programming
+Assembly language programming
+SQL querying
+Linux/Unix administration
+Operating systems fundamentals
+Microprocessor architecture
+Assembly-level programming
+Microcontroller interfacing
+GPIO control
+PWM signal generation
+ADC interfacing
+DAC interfacing
+Timer & interrupt configuration
+Embedded C programming
+Real-time systems concepts
+Task scheduling & multitasking
+Digital logic design
+Hardware description languages (VHDL/Verilog)
+FPGA prototyping
+Sequential circuit design
+State machine design
+Analog circuit analysis
+Passive filter design
+Active filter design
+Operational amplifier design
+Diode circuits
+Transistor circuits
+Electronic instrumentation
+Signal & systems analysis
+Fourier transforms
+Laplace transforms
+Time-domain analysis
+Frequency-domain analysis
+Digital signal processing
+Discrete-time signal processing
+Image processing fundamentals
+Computer vision basics
+Feature detection
+Object tracking
+Control systems modeling
+PID controller design
+Feedback system analysis
+Automatic control laboratory skills
+Power system analysis
+Load flow studies
+Fault analysis
+Power transmission & distribution
+High-voltage engineering
+Insulation coordination
+Protection relay configuration
+Power electronics (rectifiers, inverters)
+DC motor control
+AC motor control
+Power semiconductor devices
+Smart grid technologies
+Renewable energy systems
+Energy management & stability
+Communication systems fundamentals
+Analog modulation techniques
+Digital modulation techniques
+Wireless communication
+Cellular network basics
+Networking protocols (TCP/IP)
+Socket programming
+Network security basics
+Cryptography fundamentals
+Multimedia networking
+Technical report writing
+Laboratory safety & protocols
+Experimental design
+Data analysis & visualization
+Engineering mathematics
+Probability & statistics
+Linear algebra
+Calculus
+Numerical methods for engineers
+Research methodologies
+Team collaboration
+Professional ethics
+Sustainability & environmental considerations
+Entrepreneurial mindset
+Electromagnetic field theory
+Electrostatics
+Magnetostatics
+Electromagnetic wave propagation
+Transmission line theory
+Telegrapher’s equations
+Impedance matching
+Pulse circuit analysis
+Transient circuit analysis
+Oscillator design
+LC oscillator design
+RC oscillator design
+Crystal oscillator design
+RF & microwave circuit design
+Antenna theory & design
+Antenna arrays
+Radiation pattern analysis
+Channel coding
+Block coding
+Convolutional coding
+Error-correction algorithms
+Spread-spectrum techniques
+Barker codes
+CDMA basics
+Regenerative circuits
+Switching circuit design
+Schmitt trigger design
+Multivibrator design
+Circuit simulation (SPICE)
+Oscilloscope usage
+Signal generator usage
+Network analyzer usage
+Power electronics switching (DC–DC, PWM)
+Motor drive control circuits
+Real-time operating system (RTOS) fundamentals

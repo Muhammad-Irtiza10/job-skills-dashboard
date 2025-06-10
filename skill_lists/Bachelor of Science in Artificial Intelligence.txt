@@ -1,0 +1,66 @@
+Arabic speaking
+Arabic listening
+Arabic reading
+Arabic writing
+Python programming
+Java programming
+C programming
+C++ programming
+Assembly language programming
+SQL querying
+Linux/Unix administration
+Operating systems fundamentals
+Multithreading & concurrency
+Process scheduling
+Embedded systems design
+Microcontroller programming
+Hardware–software interfacing
+Software engineering principles
+Requirements engineering
+Algorithm design
+Data structures
+Object-oriented programming
+Knowledge representation
+Heuristic search techniques
+Supervised learning
+Unsupervised learning
+Reinforcement learning
+Regression analysis
+Decision tree modeling
+Classification techniques
+Neural networks
+Deep learning
+Convolutional neural networks
+Natural language processing
+Information extraction
+Text categorization
+Dependency parsing
+Speech tagging
+Data visualization
+Data analysis
+Data mining
+Big data frameworks (Hadoop, Spark)
+MapReduce programming
+Distributed computing
+Internet of Things (IoT) architectures
+IoT protocols
+IoT privacy & security
+Computer vision
+Image processing
+Feature detection
+Object tracking
+Statistical learning
+Probability & statistics
+Excel modeling
+MATLAB scripting
+VBA programming
+Research methods
+Study skills
+Critical thinking
+Problem solving
+Communication skills
+Team collaboration
+Professional ethics
+Robotics fundamentals
+Motion planning
+Obstacle avoidance
