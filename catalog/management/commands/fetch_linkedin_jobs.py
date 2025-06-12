@@ -1,81 +1,113 @@
-# myapp/management/commands/fetch_linkedin_jobs.py
+#!/usr/bin/env python
+"""
+Django management command to scrape LinkedIn job postings without login,
+fetch full details, extract skills, and save to your models.
 
+Dependencies:
+  pip install requests beautifulsoup4 transformers
+Usage:
+  python manage.py fetch_linkedin_jobs \
+    --query "Content Writer" \
+    --location "United Arab Emirates" \
+    --jobfield "Mass Communication" \
+    --max-jobs 10
+"""
 import time
-import random
 import re
+import json
+import requests
 from datetime import datetime, timedelta
-
-from django.core.management.base import BaseCommand
-from selenium import webdriver
-from selenium.webdriver.edge.service import Service as EdgeService
-from selenium.webdriver.edge.options import Options as EdgeOptions
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
-
-from transformers import pipeline  # HuggingFace NER
-
+from django.core.management.base import BaseCommand
 from catalog.models import JobField, JobPosting, Skill
+from transformers import pipeline
+import html
 
+# Browser-like headers
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/135.0.0.0 Safari/537.36"
+)
+# LinkedIn guest API endpoint for listings
+LISTING_API = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
 
-def clean_ner_entities(ner_outputs: list[dict]) -> list[str]:
+# Initialize NER pipeline once (no grouping; we'll post-process)
+NER_PIPELINE = pipeline(
+    "ner",
+    model="dslim/bert-base-NER",
+    aggregation_strategy="simple"
+)
+
+# List of unwanted terms to filter out from extracted skill-like NER entities.
+# You can extend this set with more terms you deem non-skills.
+UNWANTED_TERMS = {
+    # e.g. common company/location words you see incorrectly captured
+    "united arab emirates", "abudhabi", "dubai", "uae", "middle east",
+    # month/day terms that sometimes appear
+    "january", "february", "march", "april", "may", "june", "july",
+    "august", "september", "october", "november", "december",
+    # remove single common words if needed; adjust as you discover
+    # ...
+}
+
+def fetch_listings(keywords, location, start=0):
     """
-    Post-process HuggingFace NER output into a clean list of skill names.
-    - Drop tokens that start with '##' (subword fragments).
-    - Discard 1–2 letter tokens unless explicitly allowed (e.g. "C", "R", "AI").
-    - Remove stray punctuation (keep alphanumeric, +, #, ., -, and spaces).
-    - Deduplicate case-insensitively but preserve original casing for first occurrence.
+    Fetch up to ~25 job cards via LinkedIn guest API.
+    Returns list of dicts {title, company_name, location, url}.
+    Handles 429 on listing API gracefully.
     """
-    # Add any known 1–2 letter skill tokens you want to allow:
-    ALLOWED_SHORT = {"c", "r", "ai", "go", "js"}
-
-    cleaned = []
-    for ent in ner_outputs:
-        word = ent.get("word", "").strip()
-        if not word:
+    params = {"keywords": keywords, "location": location, "start": start}
+    headers = {"User-Agent": USER_AGENT, "Accept-Language": "en-US,en;q=0.9"}
+    try:
+        response = requests.get(LISTING_API, params=params, headers=headers)
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        if e.response is not None and e.response.status_code == 429:
+            print(f"⚠️  Rate limited on listing API for keywords='{keywords}', start={start}. Skipping this batch.")
+            return []
+        raise
+    soup = BeautifulSoup(response.text, "html.parser")
+    cards = soup.select("div.base-card--link")
+    results = []
+    for card in cards:
+        link = card.select_one("a.base-card__full-link")
+        if not link or not link.has_attr("href"):
             continue
+        url = link["href"].split('?')[0]
+        title_el = card.select_one("h3.base-search-card__title")
+        title = title_el.get_text(strip=True) if title_el else link.get_text(strip=True)
+        comp_el = card.select_one("h4.base-search-card__subtitle")
+        company = comp_el.get_text(strip=True) if comp_el else ''
+        loc_el = card.select_one("span.job-search-card__location")
+        loc = loc_el.get_text(strip=True) if loc_el else ''
+        results.append({"title": title, "company_name": company, "location": loc, "url": url})
+    return results
 
-        # 1) Drop any subword fragment
-        if word.startswith("##"):
-            continue
-
-        lower_word = word.lower()
-        # 2) Drop 1–2 char tokens unless in our allowed short set
-        if len(lower_word) < 3 and lower_word not in ALLOWED_SHORT:
-            continue
-
-        # 3) Remove any stray punctuation, keeping letters, numbers, '+', '#', '.', '-', and spaces
-        cleaned_word = re.sub(r"[^\w\s\+\#\.\-]", "", word)
-
-        # 4) Collapse multiple spaces into one
-        cleaned_word = re.sub(r"\s{2,}", " ", cleaned_word).strip()
-
-        if cleaned_word:
-            cleaned.append(cleaned_word)
-
-    # 5) Deduplicate case-insensitive, preserving first-seen casing
-    seen = {}
-    for w in cleaned:
-        key = w.lower()
-        if key not in seen:
-            seen[key] = w
-
-    return list(seen.values())
-
-
-def parse_linkedin_date(rel_text: str) -> datetime.date:
+def fetch_detail_page(url):
     """
-    Convert LinkedIn’s “relative” posted dates into a date object.
-    Examples:
-      - "1 day ago", "3 days ago", "1 week ago", "2 months ago", "Just now", "Posted today"
-    Returns a datetime.date or None if unparseable.
+    Fetch full job detail HTML, retry on 429 errors.
+    Returns HTML string or raises.
     """
-    text = rel_text.strip().lower()
+    for _ in range(3):
+        r = requests.get(url, headers={"User-Agent": USER_AGENT})
+        if r.status_code == 429:
+            time.sleep(5)
+            continue
+        r.raise_for_status()
+        return r.text
+    raise requests.exceptions.HTTPError(f"429 Too many requests: {url}")
 
-    if text in ("just now", "posted today", "today"):
+def parse_relative_date_text(text):
+    """
+    Parse relative date text like "Posted 3 days ago" or Arabic "قبل ٤ أسبوع".
+    Returns date object or None.
+    """
+    txt = text.strip().lower()
+    # English patterns
+    if txt in ("just now", "posted today", "today"):
         return datetime.today().date()
-
-    m = re.match(r"(\d+)\s+(day|days|week|weeks|month|months)\s+ago", text)
+    m = re.match(r"(\d+)\s+(day|days|week|weeks|month|months)\s+ago", txt)
     if m:
         amount = int(m.group(1))
         unit = m.group(2)
@@ -85,307 +117,322 @@ def parse_linkedin_date(rel_text: str) -> datetime.date:
             return (datetime.today() - timedelta(weeks=amount)).date()
         elif "month" in unit:
             return (datetime.today() - timedelta(days=30 * amount)).date()
-
-    m2 = re.match(r"(\d+)\+\s+days\s+ago", text)
-    if m2:
-        amount = int(m2.group(1))
-        return (datetime.today() - timedelta(days=amount)).date()
-
+    # Arabic-like patterns: e.g., "قبل ٤ أسبوع" or "قبل 4 أسابيع"
+    # Extract Arabic digits or Western digits
+    m_ar = re.search(r"قبل\s*([0-9٠١٢٣٤٥٦٧٨٩]+)\s*(يوم|أيام|أسبوع|أسابيع|شهر|شهور)", text)
+    if m_ar:
+        num_text = m_ar.group(1)
+        # convert Arabic-Indic digits to int if needed
+        try:
+            # replace Arabic numerals with Western if present
+            arabic_digits = "٠١٢٣٤٥٦٧٨٩"
+            translation = str.maketrans({d: str(i) for i, d in enumerate(arabic_digits)})
+            num_norm = num_text.translate(translation)
+            amount = int(num_norm)
+        except:
+            amount = None
+        unit_ar = m_ar.group(2)
+        if amount is not None:
+            if "يوم" in unit_ar:
+                return (datetime.today() - timedelta(days=amount)).date()
+            elif "أسبوع" in unit_ar:
+                return (datetime.today() - timedelta(weeks=amount)).date()
+            elif "شهر" in unit_ar:
+                return (datetime.today() - timedelta(days=30 * amount)).date()
     return None
 
+def clean_ner_entities(ner_outputs: list[dict]) -> list[str]:
+    """
+    Post-process HuggingFace NER output into a clean list of skill names.
+    - Drop tokens that start with '##' (subword fragments).
+    - Discard 1–2 letter tokens unless explicitly allowed.
+    - Remove stray punctuation (keep alphanumeric, +, #, ., -, and spaces).
+    - Deduplicate case-insensitively but preserve original casing for first occurrence.
+    - Filter out unwanted terms (from UNWANTED_TERMS) by whole-word match.
+    """
+    ALLOWED_SHORT = {"c", "r", "ai", "go", "js"}
+    cleaned = []
+    for ent in ner_outputs:
+        word = ent.get("word", "").strip()
+        if not word:
+            continue
+        # 1) Drop subword fragments
+        if word.startswith("##"):
+            continue
+        lower_word = word.lower()
+        # 2) Drop 1–2 char tokens unless allowed
+        if len(lower_word) < 3 and lower_word not in ALLOWED_SHORT:
+            continue
+        # 3) Remove stray punctuation except allowed ones
+        cleaned_word = re.sub(r"[^\w\s\+\#\.\-]", "", word)
+        # 4) Collapse whitespace
+        cleaned_word = re.sub(r"\s{2,}", " ", cleaned_word).strip()
+        if not cleaned_word:
+            continue
+        # 5) Filter out unwanted by exact lower-word match or if full phrase matches unwanted
+        lw = cleaned_word.lower()
+        # check if any unwanted term equals this or contained wholly:
+        if lw in UNWANTED_TERMS:
+            continue
+        # e.g., if unwanted term is multiple words, skip if cleaned_word equals it
+        # We do not drop if cleaned_word contains unwanted term as substring within a larger word, 
+        # but you may adjust here if desired.
+        cleaned.append(cleaned_word)
+    # Deduplicate case-insensitive
+    seen = {}
+    for w in cleaned:
+        key = w.lower()
+        if key not in seen:
+            seen[key] = w
+    return list(seen.values())
 
 class Command(BaseCommand):
-    help = (
-        "Scrapes LinkedIn job postings using an already-logged-in Edge profile. "
-        "Prints each posting’s cleaned skill list to the terminal, then asks whether to save to DB."
-    )
-
+    help = "Fetch LinkedIn job postings and extract skills via NER, with full description extraction."
     def add_arguments(self, parser):
         parser.add_argument(
-            "--query",
-            type=str,
-            default="Software Engineer",
-            help="Job title/keywords to search for (e.g. 'Data Scientist')"
+            "--query", "-q", type=str, default="Software Engineer",
+            help="Search keywords"
         )
         parser.add_argument(
-            "--location",
-            type=str,
-            default="United Arab Emirates",
-            help="Location string for the search (e.g. 'Dubai, UAE')"
+            "--location", "-l", type=str, default="United Arab Emirates",
+            help="Job location filter"
         )
         parser.add_argument(
-            "--jobfield",
-            type=str,
-            default="Software Engineering",
-            help="Name of the JobField to associate these postings with"
+            "--jobfield", "-j", type=str, default="Software Engineering",
+            help="JobField name in DB"
         )
         parser.add_argument(
-            "--max-jobs",
-            type=int,
-            default=10,
-            help="Maximum number of job postings to scrape"
-        )
-        parser.add_argument(
-            "--max_jobs",
-            type=int,
-            help="Alternate flag name for maximum number of job postings"
+            "--max-jobs", "-m", type=int, default=50,
+            help="Max postings to fetch"
         )
 
     def handle(self, *args, **options):
         query = options["query"]
         location = options["location"]
-        jobfield_name = options["jobfield"]
+        field_name = options["jobfield"]
+        max_jobs = options["max_jobs"]
 
-        # Accept either --max-jobs or --max_jobs
-        max_jobs = options.get("max_jobs")
-        if max_jobs is None:
-            max_jobs = options.get("max-jobs", 10)
+        job_field, _ = JobField.objects.get_or_create(name=field_name)
 
-        # 1) Ensure a JobField exists (or create it)
-        job_field_obj, _ = JobField.objects.get_or_create(name=jobfield_name)
+        # 1) Collect listings in batches of 25
+        listings = []
+        for start in range(0, max_jobs, 25):
+            batch = fetch_listings(query, location, start)
+            if not batch:
+                break
+            listings.extend(batch)
+            if len(listings) >= max_jobs:
+                break
+            time.sleep(1)
 
-        # 2) Path to your msedgedriver.exe
-        EDGE_DRIVER_PATH = r"C:\Users\aurakcyber5\Downloads\edgedriver_win32\msedgedriver.exe"
-        service = EdgeService(executable_path=EDGE_DRIVER_PATH)
+        total = min(len(listings), max_jobs)
+        self.stdout.write(self.style.SUCCESS(
+            f"🔍 Fetched {total} listings for '{query}' in '{location}'"
+        ))
 
-        # 3) Build EdgeOptions to reuse the manually-logged-in profile
-        edge_options = EdgeOptions()
-        edge_options.use_chromium = True
-
-        # ----- THESE TWO LINES MUST MATCH YOUR MANUAL LOGIN -----
-        edge_options.add_argument(r"--user-data-dir=C:\Users\aurakcyber5\selenium-profile-seed")
-        edge_options.add_argument(r"--profile-directory=SeleniumTest")
-        # ---------------------------------------------------------
-
-        edge_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        edge_options.add_experimental_option("useAutomationExtension", False)
-
-        edge_options.add_argument(
-            "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0"
-        )
-
-        # OPTIONAL: run headless once verified
-        # edge_options.add_argument("--headless")
-
-        edge_options.add_argument("--disable-gpu")
-        edge_options.add_argument("--window-size=1920,1080")
-
-        driver = webdriver.Edge(service=service, options=edge_options)
-
-        # === Initialize the HuggingFace NER pipeline once ===
-        ner_pipeline = pipeline("ner", model="dslim/bert-base-NER", grouped_entities=True)
-
-        try:
-            # 4) Go to LinkedIn feed
-            driver.get("https://www.linkedin.com/feed/")
-            time.sleep(5)
-
-            # If redirected to login, abort
-            if "login" in driver.current_url.lower():
-                self.stderr.write(
-                    "ERROR: Selenium did not load your saved profile. Aborting."
+        # 2) Display summary
+        if total:
+            self.stdout.write("\nListings:")
+            for idx, job in enumerate(listings[:total], start=1):
+                self.stdout.write(
+                    f" {idx}. {job['title']} at {job['company_name']} ({job['location']})\n    {job['url']}"
                 )
-                return
+        else:
+            self.stdout.write(self.style.WARNING("No listings found."))
+            return
 
-            # 5) Navigate directly to Jobs page
-            driver.get("https://www.linkedin.com/jobs")
-            time.sleep(5)
+        # 3) Preview each: fetch details and show date, skills, cleaned description
+        preview_data = []
+        ner = NER_PIPELINE
+        for idx, job in enumerate(listings[:total], start=1):
+            url = job['url']
+            # Skip existing in DB if desired for preview? We'll preview anyway.
+            try:
+                page_html = fetch_detail_page(url)
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f"[{idx}] ⚠️ Skip fetch detail {url}: {e}"))
+                preview_data.append({
+                    "index": idx,
+                    "url": url,
+                    "date": None,
+                    "skills": [],
+                    "cleaned_description": "",
+                    "raw_html": ""
+                })
+                continue
 
-            # 6) Fill in search filters
-            keyword_input = driver.find_element(
-                By.CSS_SELECTOR, "input[aria-label*='title, skill, or company']"
-            )
-            location_input = driver.find_element(
-                By.CSS_SELECTOR, "input[aria-label*='City, state, or zip code']"
-            )
+            soup = BeautifulSoup(page_html, 'html.parser')
 
-            keyword_input.clear()
-            keyword_input.send_keys(query)
-            time.sleep(random.uniform(1, 2))
-
-            location_input.clear()
-            location_input.send_keys(location)
-            time.sleep(random.uniform(1, 2))
-
-            # Press Enter to apply filters
-            location_input.send_keys(Keys.ENTER)
-            time.sleep(5)
-
-            #
-            # 7) Scroll the job-list container until we have at least max_jobs URLs
-            #
-            job_urls = []
-            max_scrolls = 30
-            scroll_count = 0
-
-            while len(job_urls) < max_jobs and scroll_count < max_scrolls:
-                scroll_count += 1
-
+            # 3a) Try to extract JSON-LD JobPosting if present
+            json_ld = None
+            for script in soup.select('script[type="application/ld+json"]'):
                 try:
-                    # Find the little “scroll sentinel” above the <ul> in the left pane
-                    sentinel = driver.find_element(
-                        By.CSS_SELECTOR,
-                        "div[data-results-list-top-scroll-sentinel]"
-                    )
-                    # Its parent <div> is the scrollable container
-                    list_container = sentinel.find_element(By.XPATH, "./parent::div")
-                except:
-                    list_container = None
-
-                if list_container:
-                    driver.execute_script(
-                        "arguments[0].scrollTop = arguments[0].scrollHeight", list_container
-                    )
-                else:
-                    # Fallback: scroll the entire window if we can't find sentinel
-                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-
-                # Give LinkedIn a moment to append more cards
-                time.sleep(1.5)
-
-                # Re-collect all job-card links
-                cards = driver.find_elements(By.CSS_SELECTOR, "a.job-card-container__link")
-                unique_urls = []
-                for c in cards:
-                    href = c.get_attribute("href")
-                    if href and href not in unique_urls:
-                        unique_urls.append(href)
-
-                job_urls = unique_urls[:max_jobs]
-
-            #
-            # 8) Loop over each collected job_url
-            #
-            scraped_jobs = []
-            scraped_count = 0
-
-            for job_url in job_urls:
-                # Skip if already in DB
-                if JobPosting.objects.filter(raw_description=job_url).exists():
+                    data = json.loads(script.string or "{}")
+                except json.JSONDecodeError:
                     continue
+                # Some pages wrap as a list
+                if isinstance(data, list):
+                    for item in data:
+                        if isinstance(item, dict) and item.get("@type") == "JobPosting":
+                            json_ld = item
+                            break
+                    if json_ld:
+                        break
+                elif isinstance(data, dict) and data.get("@type") == "JobPosting":
+                    json_ld = data
+                    break
 
-                driver.get(job_url)
-                time.sleep(3)
+            # 3b) Extract raw_description_html and cleaned text
+            raw_html_snippet = ""
+            cleaned_text = ""
+            date_posted = None
 
-                page_html = driver.page_source
-                soup = BeautifulSoup(page_html, "html.parser")
+            if json_ld:
+                # Raw HTML description from JSON-LD (it may contain HTML tags)
+                desc_html = json_ld.get("description", "")
+                raw_html_snippet = desc_html
+                # 1) Unescape any HTML entities
+                desc_html = html.unescape(desc_html)
+                # 2) Strip out all tags, collapse to text
+                cleaned_text = BeautifulSoup(desc_html, "html.parser") \
+                                .get_text(separator="\n") \
+                                .strip()
+                # DatePosted ISO
+                date_iso = json_ld.get("datePosted")
+                if date_iso:
+                    try:
+                        # ISO format: "2025-05-13T13:01:36.000Z"
+                        dt = datetime.fromisoformat(date_iso.replace("Z", "+00:00"))
+                        date_posted = dt.date()
+                    except Exception:
+                        date_posted = None
+            # Fallback if JSON-LD missing or incomplete:
+            if not raw_html_snippet:
+                # Look for full job description container
+                desc_div = (
+                    soup.select_one('div.show-more-less-html__markup') or
+                    soup.select_one('div.jobs-description__content') or
+                    soup.select_one('section.description') or
+                    None
+                )
+                if desc_div:
+                    raw_html_snippet = str(desc_div)
+                    # use .get_text() directly so no tags slip through
+                    cleaned_text = desc_div.get_text(separator="\n").strip()
+                else:
+                    raw_html_snippet = ""
+                    cleaned_text = ""
 
-                # 9) Extract posted date
+            # 3c) Extract date if not from JSON-LD: look for <time datetime>, or text “قبل X أسبوع”
+            if date_posted is None:
+                # Try <time datetime="">
                 time_tag = soup.select_one("time[datetime]")
                 if time_tag and time_tag.has_attr("datetime"):
                     try:
-                        posted_date = datetime.fromisoformat(time_tag["datetime"]).date()
-                    except ValueError:
-                        posted_date = parse_linkedin_date(time_tag.get_text(strip=True))
+                        date_posted = datetime.fromisoformat(time_tag["datetime"]).date()
+                    except Exception:
+                        # fallback to relative text
+                        rel = time_tag.get_text(strip=True)
+                        date_posted = parse_relative_date_text(rel)
                 else:
-                    rel_time_elem = (
-                        soup.select_one("time")
-                        or soup.find("span", string=re.compile(r"\d+\s+(day|week|month)"))
-                    )
-                    if rel_time_elem:
-                        rel_text = rel_time_elem.get_text(strip=True)
-                        posted_date = parse_linkedin_date(rel_text)
-                    else:
-                        posted_date = None
-
-                # 10) Extract job title
-                title_elem = (
-                    soup.select_one("h1.topcard__title")
-                    or soup.select_one("h1.top-card-layout__title")
-                    or soup.find("h1")
-                )
-                job_title = title_elem.get_text(strip=True) if title_elem else "N/A"
-
-                # Extract company name
-                # LinkedIn uses several patterns; try both:
-                comp_elem = (
-                    soup.select_one("a.topcard__org-name-link")  # most modern
-                    or soup.select_one("span.topcard__flavor")    # fallback
-                )
-                company_name = comp_elem.get_text(strip=True) if comp_elem else ""
-
-                # 11) Extract raw & cleaned job description
-                desc_div = (
-                    soup.select_one("div.show-more-less-html__markup")
-                    or soup.select_one("div.jobs-description__content")
-                )
-                raw_html = str(desc_div) if desc_div else ""
-                cleaned_text = (
-                    BeautifulSoup(raw_html, "html.parser").get_text(separator="\n").strip()
-                    if raw_html else ""
-                )
-
-                # 12) Prepare text for NER
-                text_for_nlp = cleaned_text.replace("\n", " ").replace("\r", " ")
-                text_for_nlp = re.sub(r"[^\w\s\+\#\.\-]", " ", text_for_nlp)
-                text_for_nlp = re.sub(r"\s{2,}", " ", text_for_nlp).strip()
-
-                # 13) Run NER pipeline
-                nlp_entities = ner_pipeline(text_for_nlp)
-                # Post-process NER output
-                unique_skills = clean_ner_entities(nlp_entities)
-
-                # 14) Print to terminal for verification
-                print("\n--- Job Posting ---")
-                print("Job Title:", job_title)
-                print("Posted on:", posted_date or "Unknown")
-                print("Extracted skill-like terms (NER):", unique_skills)
-                print("-------------------\n")
-
-                # 15) Save data in memory for optional DB persistence
-                scraped_jobs.append({
-                    "title": job_title,
-                    "company_name": company_name,
-                    "location": location,
-                    "raw_html": raw_html,
-                    "cleaned_text": cleaned_text,
-                    "date_posted": posted_date,
-                    "skills": unique_skills,
-                    "raw_url": job_url,
-                })
-                scraped_count += 1
-
-            self.stdout.write(self.style.SUCCESS(
-                f"✅ Fetched {scraped_count} job postings for '{query}' in '{location}'."
-            ))
-
-            #
-            # 16) Ask user whether to persist to the database
-            #
-            while True:
-                choice = input("Save these postings to the database? (Y/N): ").strip().upper()
-                if choice in ("Y", "N"):
-                    break
-                print("Please enter 'Y' or 'N'.")
-
-            if choice == "Y":
-                saved_count = 0
-                for job in scraped_jobs:
-                    if JobPosting.objects.filter(raw_description=job["raw_url"]).exists():
-                        continue
-
-                    job_posting = JobPosting.objects.create(
-                        title=job["title"],
-                        company_name=job["company_name"],
-                        job_field=job_field_obj,
-                        location=job["location"],
-                        raw_description=job["raw_html"] or job["raw_url"],
-                        cleaned_description=job["cleaned_text"],
-                        date_posted=job["date_posted"],                  
-                    )
-                    for skill_name in job["skills"]:
-                        skill_obj, _ = Skill.objects.get_or_create(name=skill_name)
-                        job_posting.skills.add(skill_obj)
-                    job_posting.save()
-                    saved_count += 1
-
-                self.stdout.write(self.style.SUCCESS(
-                    f"✅ Saved {saved_count} job postings to the database."
-                ))
+                    # Try span with "posted" patterns
+                    rel_elem = soup.find(lambda tag: tag.name in ("span", "time") and "ago" in (tag.get_text("") or "").lower())
+                    if rel_elem:
+                        date_posted = parse_relative_date_text(rel_elem.get_text(strip=True))
+            
+            # 3d) First try to pick up an explicit “Skills” (or “Requirements”) section…
+            skills = []
+            header = soup.find(
+                lambda tag: tag.name in ("strong", "h3", "h4", "p")
+                            and any(kw in tag.get_text(strip=True).lower() 
+                                    for kw in ("skill", "requirement", "qualification"))
+            )
+            if header:
+                # look for a following <ul> of bullets
+                ul = header.find_next_sibling("ul")
+                if ul:
+                    skills = [li.get_text(strip=True) for li in ul.find_all("li")]
+                else:
+                    # or maybe comma-separated on the same line
+                    after = header.get_text(separator=" ").split(":", 1)[-1]
+                    skills = [s.strip() for s in after.split(",") if s.strip()]
             else:
-                self.stdout.write("Aborted: No postings were saved to the database.")
+                # fallback to your NER pipeline
+                text_for_nlp = re.sub(r"[^\w\s\+\#\.\-]", " ",
+                                    cleaned_text.replace("\n", " "))
+                text_for_nlp = re.sub(r"\s{2,}", " ", text_for_nlp).strip()
+                entities = ner(text_for_nlp) if text_for_nlp else []
+                skills = clean_ner_entities(entities)
 
-        finally:
-            driver.quit()
+            preview_data.append({
+                "index": idx,
+                "url": url,
+                "date": date_posted,
+                "skills": skills,
+                "cleaned_description": cleaned_text,
+                "raw_html": raw_html_snippet
+            })
+
+        # 4) Print preview
+        self.stdout.write("\nPreview details:")
+        for item in preview_data:
+            idx = item["index"]
+            date_str = item["date"].isoformat() if item["date"] else "Unknown"
+            skills_str = ", ".join(item["skills"]) if item["skills"] else "None"
+            self.stdout.write(f" [{idx}] Date: {date_str} | Skills: {skills_str}")
+            # Print cleaned description with indentation
+            desc = item["cleaned_description"]
+            if desc:
+                self.stdout.write("    Description:")
+                for line in desc.splitlines():
+                    line = line.strip()
+                    if line:
+                        self.stdout.write(f"      {line}")
+            else:
+                self.stdout.write("    Description: <empty>")
+
+        # 5) Ask user whether to persist to DB
+        answer = input(f"\nSave these {len(preview_data)} postings? [Y/n]: ")
+        if answer.strip().lower() not in ('y', 'yes', ''):
+            self.stdout.write(self.style.WARNING("Aborted by user."))
+            return
+
+        # 6) Save to DB
+        saved = 0
+        for item, job in zip(preview_data, listings[:total]):
+            url = job['url']
+            # Avoid duplicates by raw_description matching URL or raw_html?
+            # Here we check URL; raw_description in DB was previously URL or HTML snippet.
+            if JobPosting.objects.filter(raw_description=url).exists():
+                continue
+            # Create posting
+            flat_desc = item["cleaned_description"].replace("\n", " ")
+            posting = JobPosting.objects.create(
+                title=job['title'],
+                company_name=job['company_name'],
+                job_field=job_field,
+                location=job['location'],
+                raw_description=item["raw_html"] or url,
+                cleaned_description=flat_desc,
+                date_posted=item["date"]
+            )
+            MAX_LEN = Skill._meta.get_field("name").max_length
+            for raw in item["skills"]:
+                raw = raw.strip()
+                # 1) Split on delimiters looking for a short chunk
+                parts = re.split(r"[\/\-\&]| and |, ", raw)
+                for candidate in parts:
+                    candidate = candidate.strip()
+                    if candidate and len(candidate) <= MAX_LEN:
+                        name = candidate
+                        break
+                else:
+                    # 2) If nothing fits, truncate at a word boundary
+                    name = raw[:MAX_LEN].rsplit(" ", 1)[0]
+
+                skill_obj, _ = Skill.objects.get_or_create(name=name)
+                posting.skills.add(skill_obj)
+
+            saved += 1
+        self.stdout.write(self.style.SUCCESS(f"💾 Saved {saved} postings."))
+
