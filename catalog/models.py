@@ -78,6 +78,7 @@ class Course(models.Model):
         return f"{self.code} – {self.name}" if self.code else self.name
 
 
+
 class Certification(models.Model):
     """
     An external certification that maps to one or more Skills.
@@ -93,8 +94,13 @@ class Certification(models.Model):
         default=0.0,
         help_text="(Optional) How closely this cert maps to market demand"
     )
+    # New field to indicate if the certification exam requires payment
+    is_paid = models.BooleanField(
+        default=True,
+        help_text="Whether taking the certification exam requires payment"
+    )
 
-    # ←−− Certification.skills is a separate M2M to Skill
+    # Certification.skills is a separate M2M to Skill
     skills = models.ManyToManyField(
         Skill,
         related_name='certifications',
@@ -107,7 +113,6 @@ class Certification(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.provider})" if self.provider else self.name
-
 
 class JobField(models.Model):
     """
