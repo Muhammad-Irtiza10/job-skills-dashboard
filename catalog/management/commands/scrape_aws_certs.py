@@ -1,43 +1,87 @@
+# catalog/management/commands/scrape_aws_certs.py
+
+import os
+import json
+import time
+import csv
 import requests
 from bs4 import BeautifulSoup
-import csv
-import time
+from selenium import webdriver
+from selenium.webdriver.edge.options import Options
+from selenium.webdriver.edge.service import Service
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
+from django.core.management.base import BaseCommand
+from catalog.models import Certification, Skill
 
-AWS_URL    = "https://aws.amazon.com/certification/"
-SELECTOR   = "a[data-rg-n='Link']"
-HEADERS    = {"User-Agent": "Mozilla/5.0 (compatible)"}
-OUTPUT_CSV = "aws_certs.csv"
+class Command(BaseCommand):
+    help = "Scrape AWS certifications and load exam domains from local domains_map.json"
 
-def scrape_aws_certs():
-    resp = requests.get(AWS_URL, headers=HEADERS)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "html.parser")
+    AWS_URL  = "https://aws.amazon.com/certification/"
+    LIST_SEL = "a[data-rg-n='Link']"
+    HEAD_SEL = {"data-rg-n": "TitleText"}
 
-    certs = []
-    for a in soup.select(SELECTOR):
-        href = a.get("href")
-        if not href:
-            continue
-        url = requests.compat.urljoin(AWS_URL, href)
-        h4 = a.find("h4", {"data-rg-n": "TitleText"})
-        title = h4.get_text(strip=True) if h4 else "—"
-        certs.append((title, url))
+    def handle(self, *args, **options):
+        # Load local domains mapping
+        cmd_dir = os.path.dirname(__file__)
+        map_path = os.path.join(cmd_dir, 'domains_map.json')
+        try:
+            with open(map_path, 'r', encoding='utf-8') as f:
+                domains_map = json.load(f)
+        except FileNotFoundError:
+            self.stderr.write(self.style.WARNING(
+                f"domains_map.json not found at {map_path}. Using empty domains list."))
+            domains_map = {}
 
-    return certs
+        # Launch headless Edge
+        opts = Options()
+        opts.add_argument("--headless")
+        opts.add_argument("--disable-gpu")
+        service = Service(EdgeChromiumDriverManager().install())
+        driver = webdriver.Edge(service=service, options=opts)
 
-def save_to_csv(certs):
-    with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Title", "URL"])
-        writer.writerows(certs)
+        self.stdout.write("➡️ Loading AWS certification listing…")
+        driver.get(self.AWS_URL)
+        time.sleep(3)
+        html = driver.page_source
+        driver.quit()
 
-def main():
-    print("→ Scraping AWS certifications…")
-    certs = scrape_aws_certs()
-    print(f"   Found {len(certs)} certifications.")
-    save_to_csv(certs)
-    print(f"   Written to {OUTPUT_CSV}")
-    time.sleep(1)
+        soup = BeautifulSoup(html, "html.parser")
+        rows = []
 
-if __name__ == "__main__":
-    main()
+        for a in soup.select(self.LIST_SEL):
+            href = a.get("href")
+            if not href:
+                continue
+            cert_url = requests.compat.urljoin(self.AWS_URL, href)
+            title_el = a.find("h4", self.HEAD_SEL)
+            title = title_el.get_text(strip=True) if title_el else None
+            if not title:
+                continue
+
+            # Get domains from local map
+            domains = domains_map.get(title, [])
+
+            # Upsert Certification
+            cert, _ = Certification.objects.update_or_create(
+                name=title,
+                provider="AWS",
+                defaults={"url": cert_url, "is_paid": True}
+            )
+            cert.skills.clear()
+            for domain in domains:
+                sk, _ = Skill.objects.get_or_create(name=domain)
+                cert.skills.add(sk)
+
+            rows.append((title, cert_url, domains))
+
+        # Reporting & CSV
+        self.stdout.write(self.style.SUCCESS(
+            f"✅ Loaded {len(rows)} AWS certifications with mapped domains."))
+        csv_path = "aws_certs_with_domains.csv"
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Title", "URL", "Domains"])
+            for t, u, ds in rows:
+                writer.writerow([t, u, "; ".join(ds)])
+        self.stdout.write(f"🔍 CSV written to {csv_path}")
+
