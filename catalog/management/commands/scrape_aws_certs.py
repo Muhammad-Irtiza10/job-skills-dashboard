@@ -24,6 +24,23 @@ class Command(BaseCommand):
         # Load local domains mapping
         cmd_dir = os.path.dirname(__file__)
         map_path = os.path.join(cmd_dir, 'domains_map.json')
+        domains_map = {}
+        try:
+            with open(map_path, 'r', encoding='utf-8') as f:
+                domains_map = json.load(f)
+            self.stdout.write(self.style.SUCCESS(f"✅ Loaded domains_map.json from {map_path} with {len(domains_map)} entries."))
+            self.stdout.write(f"Keys found: {list(domains_map.keys())}")
+        except FileNotFoundError:
+            self.stderr.write(self.style.WARNING(
+                f"⚠️ domains_map.json not found at {map_path}. Using empty domains list."))
+        except json.JSONDecodeError as e:
+            self.stderr.write(self.style.ERROR(f"❌ Failed to parse domains_map.json: {e}"))
+            domains_map = {}
+
+        # Launch headless Edge
+        # Load local domains mapping
+        cmd_dir = os.path.dirname(__file__)
+        map_path = os.path.join(cmd_dir, 'domains_map.json')
         try:
             with open(map_path, 'r', encoding='utf-8') as f:
                 domains_map = json.load(f)
