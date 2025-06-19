@@ -1,5 +1,3 @@
-from django.contrib import admin
-
 # Register your models here.
 # catalog/admin.py
 from django.contrib import admin
@@ -11,7 +9,12 @@ from .models import (
     JobField,
     JobPosting,
     StudentProfile,
+    FacultyProfile,
 )
+
+from django.contrib.auth.models import User
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+
 
 @admin.register(Skill)
 class SkillAdmin(admin.ModelAdmin):
@@ -69,3 +72,9 @@ class StudentProfileAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "user__first_name", "user__last_name", "major__name")
     filter_horizontal = ("skills",)
     ordering = ("user__username",)
+
+@admin.register(FacultyProfile)
+class FacultyProfileAdmin(admin.ModelAdmin):
+    list_display = ("user",)
+    search_fields = ("user__email",)
+
