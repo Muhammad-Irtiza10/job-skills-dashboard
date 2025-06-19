@@ -1,0 +1,18 @@
+{
+  "Cisco Certified Network Associate (CCNA)": [
+    "Network Fundamentals",
+    "Network Access",
+    "IP Connectivity",
+    "IP Services",
+    "Security Fundamentals",
+    "Automation and Programmability"
+  ],
+  "Cisco Certified Network Professional (CCNP) Enterprise": [
+    "Architecture",
+    "Virtualization",
+    "Infrastructure",
+    "Network Assurance",
+    "Security",
+    "Automation"
+  ]
+}
