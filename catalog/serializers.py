@@ -1,6 +1,14 @@
 from rest_framework import serializers
 from .models import Major, Skill, JobPosting, StudentProfile, Certification, FacultyProfile
 
+
+from django.contrib.auth import get_user_model
+
+from rest_framework import serializers
+from .models import JobField
+
+User = get_user_model()
+
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Skill
@@ -32,9 +40,11 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 class JobPostingSerializer(serializers.ModelSerializer):
     skills = SkillSerializer(many=True)
+    job_field = serializers.CharField(source='job_field.name', read_only=True)
+
     class Meta:
         model = JobPosting
-        fields = ["id","title","company_name","location","skills"]
+        fields = ["id","title","company_name","location","skills", "job_field"]
 
 class CertificationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -59,8 +69,27 @@ class FacultyProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ["user"]
 
 
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    class Meta:
+        model = User
+        fields = ("username","email","password","first_name","last_name")
+
+    def create(self, validated):
+        user = User.objects.create_user(
+            username=validated["username"],
+            email=validated.get("email",""),
+            password=validated["password"],
+            first_name=validated.get("first_name",""),
+            last_name=validated.get("last_name",""),
+        )
+        # StudentProfile will be auto-created by your post_save signal
+        return user
 
 
 
-
+class JobFieldSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JobField
+        fields = ['id', 'name']
 

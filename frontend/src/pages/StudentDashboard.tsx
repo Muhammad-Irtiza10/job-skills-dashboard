@@ -1,171 +1,365 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { User, BookOpen, Target, Award, Plus, X, ExternalLink, GraduationCap, Briefcase, Trophy, Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import {
+  User,
+  BookOpen,
+  Target,
+  Award,
+  Plus,
+  X,
+  ExternalLink,
+  GraduationCap,
+  Briefcase,
+  Trophy,
+} from 'lucide-react'
+import { apiFetch } from '@/lib/api'  // your helper calling fetch with token
 
-const StudentDashboard = () => {
-  // State variables
-  const [selectedMajor, setSelectedMajor] = useState('');
-  const [userSkills, setUserSkills] = useState<string[]>([]);
-  const [customSkill, setCustomSkill] = useState('');
-  const [selectedJobField, setSelectedJobField] = useState('');
-  const [selectedJob, setSelectedJob] = useState<any>(null);
-  const [showJobDetails, setShowJobDetails] = useState(false);
-  const navigate = useNavigate();
+// Interfaces for fetched data:
+interface Major {
+  id: number
+  name: string
+  // department, description if needed
+}
+interface Skill {
+  id: number
+  name: string
+}
+interface ProfileResponse {
+  major: Major | null
+  skills: Skill[]
+}
+interface JobPosting {
+  id: number
+  title: string
+  company_name: string
+  location: string
+  skills: Skill[]
+  job_field: string  // from serializer
+}
+interface MissingResponse {
+  missing_skills: Skill[]
+  suggestions: {
+    [skillName: string]: Array<{
+      id: number
+      name: string
+      provider: string
+      url: string
+      relevance_score: number
+      // ...other fields if in serializer
+    }>
+  }
+}
+interface JobField {
+  id: number
+  name: string
+}
 
-  // Sample data
-  const majors = [
-    { id: 'cs', name: 'Computer Science', skills: ['Programming', 'Data Structures', 'Algorithms', 'Database Management', 'Web Development'] },
-    { id: 'business', name: 'Business Administration', skills: ['Management', 'Marketing', 'Finance', 'Leadership', 'Communication'] },
-    { id: 'engineering', name: 'Engineering', skills: ['Problem Solving', 'Technical Analysis', 'Project Management', 'CAD Design', 'Mathematics'] }
-  ];
+const StudentDashboard: React.FC = () => {
+  const navigate = useNavigate()
 
-  const jobFields = [
-    { id: 'tech', name: 'Technology', majors: ['cs', 'engineering'] },
-    { id: 'finance', name: 'Finance', majors: ['business', 'cs'] },
-    { id: 'consulting', name: 'Consulting', majors: ['business', 'engineering'] }
-  ];
+  // State for profile & majors
+  const [majors, setMajors] = useState<Major[]>([])
+  const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
+  const [majorSkills, setMajorSkills] = useState<Skill[]>([])
 
-  const jobs = [
-    {
-      id: 1,
-      title: 'Software Developer',
-      field: 'tech',
-      company: 'TechCorp',
-      salary: '$75,000 - $120,000',
-      requiredSkills: ['Programming', 'Web Development', 'Database Management', 'Git', 'Testing'],
-      description: 'Develop and maintain software applications using modern technologies.'
-    },
-    {
-      id: 2,
-      title: 'Financial Analyst',
-      field: 'finance',
-      company: 'FinanceInc',
-      salary: '$60,000 - $90,000',
-      requiredSkills: ['Finance', 'Data Analysis', 'Excel', 'Financial Modeling', 'Communication'],
-      description: 'Analyze financial data and create reports for investment decisions.'
+  const [userSkills, setUserSkills] = useState<Skill[]>([])
+  const [customSkill, setCustomSkill] = useState<string>('')
+
+  // Job fields
+  const [jobFields, setJobFields] = useState<JobField[]>([])
+  const [selectedJobField, setSelectedJobField] = useState<string>('')
+
+  // Jobs & selection
+  const [jobs, setJobs] = useState<JobPosting[]>([])
+  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null)
+  const [missingData, setMissingData] = useState<MissingResponse | null>(null)
+
+  // Loading / error states
+  const [loadingProfile, setLoadingProfile] = useState<boolean>(true)
+  const [loadingMajors, setLoadingMajors] = useState<boolean>(true)
+  const [loadingJobFields, setLoadingJobFields] = useState<boolean>(true)
+  const [loadingJobs, setLoadingJobs] = useState<boolean>(false)
+  const [loadingMissing, setLoadingMissing] = useState<boolean>(false)
+
+  // 1) On mount: fetch profile, majors, job fields
+  useEffect(() => {
+    // 1.a) Fetch profile
+    apiFetch('/profile/')
+      .then((data: ProfileResponse) => {
+        if (data.major) {
+          setSelectedMajorId(data.major.id)
+          // after setting selectedMajorId, we will fetch majorSkills below
+        }
+        setUserSkills(data.skills)
+      })
+      .catch(err => {
+        console.error("Failed to load profile:", err)
+        // if unauthorized or no token, redirect to login
+        localStorage.removeItem('apiToken')
+        navigate('/')
+      })
+      .finally(() => setLoadingProfile(false))
+
+    // 1.b) Fetch majors list
+    apiFetch('/majors/')
+      .then((data: Major[]) => {
+        setMajors(data)
+      })
+      .catch(err => {
+        console.error("Failed to load majors:", err)
+      })
+      .finally(() => setLoadingMajors(false))
+
+    // 1.c) Fetch job fields list from /jobfields/
+    apiFetch('/jobfields/')
+      .then((data: JobField[]) => {
+        setJobFields(data)
+      })
+      .catch(err => {
+        console.error("Failed to load job fields:", err)
+      })
+      .finally(() => setLoadingJobFields(false))
+  }, [navigate])
+
+  // 2) Whenever selectedMajorId changes (and is non-empty), fetch major skills
+  useEffect(() => {
+    if (!selectedMajorId) {
+      setMajorSkills([])
+      return
     }
-  ];
+    apiFetch(`/majors/${selectedMajorId}/skills/`)
+      .then((data: { id: number; name: string; skills: Skill[] }) => {
+        // MajorSkillsDetail returns { id, name, skills: [...] }
+        setMajorSkills(data.skills || [])
+      })
+      .catch(err => {
+        console.error("Failed to load major skills:", err)
+        setMajorSkills([])
+      })
+  }, [selectedMajorId])
 
-  const certifications = [
-    { id: 1, name: 'AWS Certified Developer', skills: ['Cloud Computing', 'AWS'], provider: 'Amazon', duration: '3 months', link: 'https://aws.amazon.com/certification/' },
-    { id: 2, name: 'Google Analytics Certified', skills: ['Data Analysis', 'Marketing Analytics'], provider: 'Google', duration: '1 month', link: 'https://analytics.google.com/analytics/academy/' },
-    { id: 3, name: 'Git Version Control', skills: ['Git', 'Version Control'], provider: 'GitLab', duration: '2 weeks', link: 'https://about.gitlab.com/learn/' },
-    { id: 4, name: 'Software Testing Fundamentals', skills: ['Testing', 'Quality Assurance'], provider: 'ISTQB', duration: '6 weeks', link: 'https://www.istqb.org/' },
-    { id: 5, name: 'Financial Modeling', skills: ['Financial Modeling', 'Excel'], provider: 'CFA Institute', duration: '8 weeks', link: 'https://www.cfainstitute.org/' }
-  ];
-
-  const courses = [
-    { id: 1, name: 'Complete Web Development Bootcamp', skills: ['Web Development', 'Programming'], provider: 'Udemy', duration: '12 weeks', link: 'https://www.udemy.com/course/the-complete-web-development-bootcamp/' },
-    { id: 2, name: 'Data Structures and Algorithms', skills: ['Data Structures', 'Algorithms'], provider: 'Coursera', duration: '8 weeks', link: 'https://www.coursera.org/specializations/data-structures-algorithms' },
-    { id: 3, name: 'Git and GitHub Mastery', skills: ['Git', 'Version Control'], provider: 'Pluralsight', duration: '4 weeks', link: 'https://www.pluralsight.com/courses/git-fundamentals' },
-    { id: 4, name: 'Software Testing Complete Course', skills: ['Testing', 'Quality Assurance'], provider: 'edX', duration: '10 weeks', link: 'https://www.edx.org/course/software-testing-fundamentals' },
-    { id: 5, name: 'Financial Analysis and Modeling', skills: ['Financial Modeling', 'Data Analysis'], provider: 'LinkedIn Learning', duration: '6 weeks', link: 'https://www.linkedin.com/learning/financial-analysis-and-modeling' }
-  ];
-
-  // Handler functions
-  const handleMajorSelect = (majorId: string) => {
-    setSelectedMajor(majorId);
-    const major = majors.find(m => m.id === majorId);
-    if (major) {
-      setUserSkills([]);
+  // 3) Whenever selectedMajorId changes, update profile major on backend
+  //    Debounce or immediate? We’ll do immediate on change:
+  useEffect(() => {
+    if (loadingProfile) return
+    if (selectedMajorId) {
+      // PUT profile with new major id
+      // Build payload: we must send skill IDs as well to avoid overwriting them.
+      const skillIds = userSkills.map(s => s.id)
+      apiFetch('/profile/', {
+        method: 'PUT',
+        body: JSON.stringify({
+          major: selectedMajorId,
+          skills: skillIds,
+        }),
+      })
+      .then((data: ProfileResponse) => {
+        // backend returns updated profile; update userSkills from it
+        setUserSkills(data.skills || [])
+        // major is same
+      })
+      .catch(err => {
+        console.error("Failed to update profile major:", err)
+      })
     }
-  };
+  // Note: userSkills in dependency ensures we don't overwrite unintendedly.
+  }, [selectedMajorId])
 
-  const addSkillFromMajor = (skill: string) => {
-    if (!userSkills.includes(skill)) {
-      setUserSkills([...userSkills, skill]);
-    }
-  };
+  // 4) Handlers for adding/removing skills:
+  const addSkillFromMajor = (skill: Skill) => {
+    // If not already in userSkills
+    if (userSkills.some(s => s.id === skill.id)) return
+    const newSkills = [...userSkills, skill]
+    setUserSkills(newSkills)
+    // Send PUT to update profile
+    const skillIds = newSkills.map(s => s.id)
+    apiFetch('/profile/', {
+      method: 'PUT',
+      body: JSON.stringify({
+        skills: skillIds,
+        // also include major so backend doesn’t drop it:
+        major: selectedMajorId || undefined,
+      }),
+    })
+    .then((data: ProfileResponse) => {
+      setUserSkills(data.skills || [])
+    })
+    .catch(err => {
+      console.error("Failed to add skill:", err)
+    })
+  }
 
   const addCustomSkill = () => {
-    if (customSkill.trim() && !userSkills.includes(customSkill.trim())) {
-      setUserSkills([...userSkills, customSkill.trim()]);
-      setCustomSkill('');
+    const trimmed = customSkill.trim()
+    if (!trimmed) return
+    // We need to check if this skill exists in global Skill table, or create it?
+    // Approach A: Try to find existing skill via an API endpoint (not currently available).
+    // Approach B: We assume custom skills are already in Skill table or skip creation.
+    // For simplicity, let's call backend to create a new Skill if not exists.
+    // Suppose you add an endpoint POST /api/skills/ to create new skill:
+    //    { name: trimmed }
+    // Then it returns the skill {id, name}. We then add to profile.
+    // If you don't have that endpoint, you need to create it in backend. Here we assume it:
+    apiFetch('/skills/', {
+      method: 'POST',
+      body: JSON.stringify({ name: trimmed }),
+    })
+    .then((newSkillObj: Skill) => {
+      // now add to profile
+      const newSkills = [...userSkills, newSkillObj]
+      setUserSkills(newSkills)
+      setCustomSkill('')
+      const skillIds = newSkills.map(s => s.id)
+      return apiFetch('/profile/', {
+        method: 'PUT',
+        body: JSON.stringify({
+          skills: skillIds,
+          major: selectedMajorId || undefined,
+        }),
+      })
+    })
+    .then((data: ProfileResponse) => {
+      setUserSkills(data.skills || [])
+    })
+    .catch(err => {
+      // If 404 on /skills/, fallback: we cannot create; skip adding
+      console.error("Failed to create or add custom skill:", err)
+      // Optionally alert user
+    })
+  }
+
+  const removeSkill = (skill: Skill) => {
+    const newSkills = userSkills.filter(s => s.id !== skill.id)
+    setUserSkills(newSkills)
+    const skillIds = newSkills.map(s => s.id)
+    apiFetch('/profile/', {
+      method: 'PUT',
+      body: JSON.stringify({
+        skills: skillIds,
+        major: selectedMajorId || undefined,
+      }),
+    })
+    .then((data: ProfileResponse) => {
+      setUserSkills(data.skills || [])
+    })
+    .catch(err => {
+      console.error("Failed to remove skill:", err)
+    })
+  }
+
+  // 5) When selectedJobField changes, fetch jobs for that field
+  useEffect(() => {
+    if (!selectedJobField) {
+      setJobs([])
+      return
     }
-  };
+    setLoadingJobs(true)
+    // Query: /api/jobs/?job_field=<selectedJobField>
+    apiFetch(`/jobs/?job_field=${encodeURIComponent(selectedJobField)}`)
+      .then((data: JobPosting[]) => {
+        setJobs(data)
+      })
+      .catch(err => {
+        console.error("Failed to fetch jobs:", err)
+        setJobs([])
+      })
+      .finally(() => setLoadingJobs(false))
+  }, [selectedJobField])
 
-  const removeSkill = (skill: string) => {
-    setUserSkills(userSkills.filter(s => s !== skill));
-  };
+  // Handler when user selects a job
+  const handleJobSelect = (job: JobPosting) => {
+    setSelectedJob(job)
+    setLoadingMissing(true)
+    apiFetch(`/jobs/${job.id}/missing/`)
+      .then((data: MissingResponse) => {
+        setMissingData(data)
+      })
+      .catch(err => {
+        console.error("Failed to fetch missing skills:", err)
+        setMissingData(null)
+      })
+      .finally(() => setLoadingMissing(false))
+  }
 
-  const handleJobSelect = (job: any) => {
-    setSelectedJob(job);
-    setShowJobDetails(true);
-  };
+  // Helpers for match percentage:
+  const getMatchingSkills = (): Skill[] => {
+    if (!selectedJob) return []
+    const jobSkillIds = new Set(selectedJob.skills.map(s => s.id))
+    return userSkills.filter(s => jobSkillIds.has(s.id))
+  }
+  const getMissingSkillsLocal = (): Skill[] => {
+    if (!selectedJob) return []
+    const userSkillIds = new Set(userSkills.map(s => s.id))
+    return selectedJob.skills.filter(s => !userSkillIds.has(s.id))
+  }
+  const getSkillMatchPercentage = (): number => {
+    if (!selectedJob) return 0
+    const total = selectedJob.skills.length
+    if (total === 0) return 0
+    const matchCount = getMatchingSkills().length
+    return Math.round((matchCount / total) * 100)
+  }
 
-  const getMissingSkills = () => {
-    if (!selectedJob) return [];
-    return selectedJob.requiredSkills.filter((skill: string) => !userSkills.includes(skill));
-  };
-
-  const getMatchingSkills = () => {
-    if (!selectedJob) return [];
-    return selectedJob.requiredSkills.filter((skill: string) => userSkills.includes(skill));
-  };
-
-  const getSkillMatchPercentage = () => {
-    if (!selectedJob) return 0;
-    const matchingSkills = getMatchingSkills().length;
-    const totalRequired = selectedJob.requiredSkills.length;
-    return Math.round((matchingSkills / totalRequired) * 100);
-  };
-
-  const getRelevantCertifications = () => {
-    const missingSkills = getMissingSkills();
-    return certifications.filter(cert => 
-      cert.skills.some(skill => missingSkills.includes(skill))
-    );
-  };
-
-  const getRelevantCourses = () => {
-    const missingSkills = getMissingSkills();
-    return courses.filter(course => 
-      course.skills.some(skill => missingSkills.includes(skill))
-    );
-  };
-
-  const selectedMajorData = majors.find(m => m.id === selectedMajor);
-  const availableJobFields = jobFields.filter(field => field.majors.includes(selectedMajor));
-  const availableJobs = jobs.filter(job => job.field === selectedJobField);
+  // Render loading state:
+  if (loadingProfile || loadingMajors || loadingJobFields) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading dashboard…</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-red-950 to-black">
+    <div className="min-h-screen bg-gradient-to-br from-red-900 via-pink-900 to-red-800">
       {/* Header */}
-      <header className="bg-gradient-to-r from-red-900/20 to-black/40 backdrop-blur-sm border-b border-red-500/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-r from-red-600 to-red-800 rounded-lg shadow-lg">
-                <GraduationCap className="h-8 w-8 text-white" />
-              </div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-red-400 to-white bg-clip-text text-transparent">
-                Student Dashboard
-              </h1>
+      <header className="bg-gradient-to-r from-red-600/40 to-pink-600/30 backdrop-blur-sm border-b border-red-300/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-lg">
+              <GraduationCap className="h-8 w-8 text-white" />
             </div>
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={() => navigate('/profile')}
-                variant="outline"
-                className="border-red-500/50 text-red-300 hover:bg-red-900/20 hover:text-white"
-              >
-                <User className="h-4 w-4 mr-2" />
-                Profile
-              </Button>
-              <Button
-                onClick={() => navigate('/')}
-                variant="outline"
-                className="border-red-500/50 text-red-300 hover:bg-red-900/20 hover:text-white"
-              >
-                Logout
-              </Button>
-            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-red-200 to-white bg-clip-text text-transparent">
+              Student Dashboard
+            </h1>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Button
+              onClick={() => navigate('/profile')}
+              variant="outline"
+              className="border-red-300/50 text-red-100 hover:bg-red-700/30 hover:text-white"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Profile
+            </Button>
+            <Button
+              onClick={() => {
+                localStorage.removeItem('apiToken')
+                navigate('/')
+              }}
+              variant="outline"
+              className="border-red-300/50 text-red-100 hover:bg-red-700/30 hover:text-white"
+            >
+              Logout
+            </Button>
           </div>
         </div>
       </header>
@@ -173,26 +367,40 @@ const StudentDashboard = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid gap-8">
           {/* Major Selection */}
-          <Card className="bg-gradient-to-br from-red-900/30 to-black/60 border-red-500/30 backdrop-blur-sm shadow-2xl">
+          <Card className="bg-gradient-to-br from-red-700/50 to-pink-800/40 border-red-300/40 backdrop-blur-sm shadow-2xl">
             <CardHeader>
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gradient-to-r from-red-600 to-red-800 rounded-lg">
+                <div className="p-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-lg">
                   <BookOpen className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <CardTitle className="text-2xl text-white">Select Your Major</CardTitle>
-                  <CardDescription className="text-red-200">Choose your field of study to get started</CardDescription>
+                  <CardTitle className="text-2xl text-white">
+                    Select Your Major
+                  </CardTitle>
+                  <CardDescription className="text-red-100">
+                    Choose your field of study to get started
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <Select value={selectedMajor} onValueChange={handleMajorSelect}>
-                <SelectTrigger className="bg-black/50 border-red-500/50 text-white">
+              <Select
+                value={selectedMajorId.toString()}
+                onValueChange={(val) => {
+                  const idNum = parseInt(val, 10)
+                  setSelectedMajorId(isNaN(idNum) ? "" : idNum)
+                }}
+              >
+                <SelectTrigger className="bg-red-800/40 border-red-300/50 text-white">
                   <SelectValue placeholder="Choose your major" />
                 </SelectTrigger>
-                <SelectContent className="bg-black border-red-500/50">
-                  {majors.map(major => (
-                    <SelectItem key={major.id} value={major.id} className="text-white hover:bg-red-900/30">
+                <SelectContent className="bg-red-900 border-red-300/50">
+                  {majors.map((major) => (
+                    <SelectItem
+                      key={major.id}
+                      value={major.id.toString()}
+                      className="text-white hover:bg-red-700/50 focus:bg-red-700/50"
+                    >
                       {major.name}
                     </SelectItem>
                   ))}
@@ -202,66 +410,88 @@ const StudentDashboard = () => {
           </Card>
 
           {/* Skills Management */}
-          {selectedMajorData && (
+          {selectedMajorId && (
             <div className="grid md:grid-cols-2 gap-8">
-              <Card className="bg-gradient-to-br from-red-900/30 to-black/60 border-red-500/30 backdrop-blur-sm shadow-2xl">
+              {/* Major Skills */}
+              <Card className="bg-gradient-to-br from-red-700/50 to-pink-800/40 border-red-300/40 backdrop-blur-sm shadow-2xl">
                 <CardHeader>
                   <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-gradient-to-r from-red-600 to-red-800 rounded-lg">
+                    <div className="p-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-lg">
                       <Target className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl text-white">Major Skills</CardTitle>
-                      <CardDescription className="text-red-200">Skills from {selectedMajorData.name}</CardDescription>
+                      <CardTitle className="text-xl text-white">
+                        Major Skills
+                      </CardTitle>
+                      <CardDescription className="text-red-100">
+                        Skills from your major
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {selectedMajorData.skills.map(skill => (
-                      <div key={skill} className="flex items-center justify-between p-3 bg-black/30 rounded-lg border border-red-500/20">
-                        <span className="text-white">{skill}</span>
+                    {majorSkills.map((skill) => (
+                      <div
+                        key={skill.id}
+                        className="flex items-center justify-between p-3 bg-red-800/30 rounded-lg border border-red-300/20"
+                      >
+                        <span className="text-white">{skill.name}</span>
                         <Button
                           size="sm"
                           onClick={() => addSkillFromMajor(skill)}
-                          disabled={userSkills.includes(skill)}
-                          className="bg-red-600 hover:bg-red-700 text-white"
+                          disabled={userSkills.some(s => s.id === skill.id)}
+                          className="bg-red-500 hover:bg-red-600 text-white"
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
+                    {majorSkills.length === 0 && (
+                      <p className="text-red-200">No baseline skills found for this major.</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-red-900/30 to-black/60 border-red-500/30 backdrop-blur-sm shadow-2xl">
+              {/* Custom Skills */}
+              <Card className="bg-gradient-to-br from-red-700/50 to-pink-800/40 border-red-300/40 backdrop-blur-sm shadow-2xl">
                 <CardHeader>
                   <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-gradient-to-r from-red-600 to-red-800 rounded-lg">
+                    <div className="p-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-lg">
                       <Plus className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl text-white">Additional Skills</CardTitle>
-                      <CardDescription className="text-red-200">Add your other skills</CardDescription>
+                      <CardTitle className="text-xl text-white">
+                        Additional Skills
+                      </CardTitle>
+                      <CardDescription className="text-red-100">
+                        Add your other skills
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex space-x-2">
-                      <Input
-                        placeholder="Enter a skill"
-                        value={customSkill}
-                        onChange={(e) => setCustomSkill(e.target.value)}
-                        className="bg-black/50 border-red-500/50 text-white placeholder-red-300"
-                        onKeyPress={(e) => e.key === 'Enter' && addCustomSkill()}
-                      />
-                      <Button onClick={addCustomSkill} className="bg-red-600 hover:bg-red-700 text-white">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                  <div className="flex space-x-2">
+                    <Input
+                      placeholder="Enter a skill"
+                      value={customSkill}
+                      onChange={(e) => setCustomSkill(e.target.value)}
+                      className="bg-red-800/40 border-red-300/50 text-white placeholder-red-200"
+                      onKeyPress={(e) =>
+                        e.key === 'Enter' && addCustomSkill()
+                      }
+                    />
+                    <Button
+                      onClick={addCustomSkill}
+                      className="bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
                   </div>
+                  <p className="text-red-200 text-sm mt-2">
+                    * If the skill does not exist yet, it will be created.
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -269,28 +499,36 @@ const StudentDashboard = () => {
 
           {/* User Skills Display */}
           {userSkills.length > 0 && (
-            <Card className="bg-gradient-to-br from-red-900/30 to-black/60 border-red-500/30 backdrop-blur-sm shadow-2xl">
+            <Card className="bg-gradient-to-br from-red-700/50 to-pink-800/40 border-red-300/40 backdrop-blur-sm shadow-2xl">
               <CardHeader>
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gradient-to-r from-red-600 to-red-800 rounded-lg">
+                  <div className="p-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-lg">
                     <Award className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl text-white">Your Skills</CardTitle>
-                    <CardDescription className="text-red-200">Skills you have acquired</CardDescription>
+                    <CardTitle className="text-xl text-white">
+                      Your Skills
+                    </CardTitle>
+                    <CardDescription className="text-red-100">
+                      Skills you have acquired
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {userSkills.map(skill => (
-                    <Badge key={skill} variant="secondary" className="bg-red-600/20 text-red-100 border-red-500/30 hover:bg-red-600/30">
-                      {skill}
+                  {userSkills.map((skill) => (
+                    <Badge
+                      key={skill.id}
+                      variant="secondary"
+                      className="bg-red-500/30 text-red-50 border-red-300/40 hover:bg-red-500/50 flex items-center"
+                    >
+                      {skill.name}
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => removeSkill(skill)}
-                        className="ml-2 h-4 w-4 p-0 text-red-300 hover:text-white hover:bg-red-600/50"
+                        className="ml-2 h-4 w-4 p-0 text-red-200 hover:text-white hover:bg-red-500/50"
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -302,28 +540,43 @@ const StudentDashboard = () => {
           )}
 
           {/* Job Field Selection */}
-          {selectedMajor && availableJobFields.length > 0 && (
-            <Card className="bg-gradient-to-br from-red-900/30 to-black/60 border-red-500/30 backdrop-blur-sm shadow-2xl">
+          {jobFields.length > 0 && (
+            <Card className="bg-gradient-to-br from-red-700/50 to-pink-800/40 border-red-300/40 backdrop-blur-sm shadow-2xl">
               <CardHeader>
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gradient-to-r from-red-600 to-red-800 rounded-lg">
+                  <div className="p-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-lg">
                     <Briefcase className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl text-white">Job Fields</CardTitle>
-                    <CardDescription className="text-red-200">Explore career opportunities</CardDescription>
+                    <CardTitle className="text-xl text-white">
+                      Job Fields
+                    </CardTitle>
+                    <CardDescription className="text-red-100">
+                      Explore career opportunities
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <Select value={selectedJobField} onValueChange={setSelectedJobField}>
-                  <SelectTrigger className="bg-black/50 border-red-500/50 text-white">
+                <Select
+                  value={selectedJobField}
+                  onValueChange={(val) => {
+                    setSelectedJobField(val)
+                    setSelectedJob(null)
+                    setMissingData(null)
+                  }}
+                >
+                  <SelectTrigger className="bg-red-800/40 border-red-300/50 text-white">
                     <SelectValue placeholder="Choose a job field" />
                   </SelectTrigger>
-                  <SelectContent className="bg-black border-red-500/50">
-                    {availableJobFields.map(field => (
-                      <SelectItem key={field.id} value={field.id} className="text-white hover:bg-red-900/30">
-                        {field.name}
+                  <SelectContent className="bg-red-900 border-red-300/50">
+                    {jobFields.map((f) => (
+                      <SelectItem
+                        key={f.id}
+                        value={f.name}
+                        className="text-white hover:bg-red-700/50 focus:bg-red-700/50"
+                      >
+                        {f.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -333,67 +586,88 @@ const StudentDashboard = () => {
           )}
 
           {/* Job Listings */}
-          {selectedJobField && availableJobs.length > 0 && (
-            <Card className="bg-gradient-to-br from-red-900/30 to-black/60 border-red-500/30 backdrop-blur-sm shadow-2xl">
+          {selectedJobField && (
+            <Card className="bg-gradient-to-br from-red-700/50 to-pink-800/40 border-red-300/40 backdrop-blur-sm shadow-2xl">
               <CardHeader>
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gradient-to-r from-red-600 to-red-800 rounded-lg">
+                  <div className="p-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-lg">
                     <Target className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl text-white">Available Jobs</CardTitle>
-                    <CardDescription className="text-red-200">Click on a job to see details</CardDescription>
+                    <CardTitle className="text-xl text-white">
+                      Available Jobs in {selectedJobField}
+                    </CardTitle>
+                    <CardDescription className="text-red-100">
+                      Click on a job to see details
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4">
-                  {availableJobs.map(job => (
-                    <div
-                      key={job.id}
-                      onClick={() => handleJobSelect(job)}
-                      className="p-6 bg-gradient-to-r from-black/40 to-red-900/20 rounded-lg border border-red-500/30 cursor-pointer hover:border-red-400 hover:shadow-lg hover:shadow-red-500/20 transition-all duration-300"
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="text-xl font-semibold text-white mb-1">{job.title}</h3>
-                          <p className="text-red-200">{job.company}</p>
-                        </div>
-                        <Badge className="bg-red-600 text-white">{job.salary}</Badge>
-                      </div>
-                      <p className="text-red-100 mb-3">{job.description}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {job.requiredSkills.map((skill: string) => (
-                          <Badge
-                            key={skill}
-                            variant={userSkills.includes(skill) ? "default" : "outline"}
-                            className={userSkills.includes(skill) 
-                              ? "bg-green-600 text-white" 
-                              : "border-red-500/50 text-red-300"
-                            }
-                          >
-                            {skill}
+                {loadingJobs ? (
+                  <p className="text-red-200">Loading jobs…</p>
+                ) : jobs.length === 0 ? (
+                  <p className="text-red-200">No jobs found for this field.</p>
+                ) : (
+                  <div className="grid gap-4">
+                    {jobs.map((job) => (
+                      <div
+                        key={job.id}
+                        onClick={() => handleJobSelect(job)}
+                        className="p-6 bg-gradient-to-r from-red-800/40 to-pink-700/30 rounded-lg border border-red-300/30 cursor-pointer hover:border-red-200 hover:shadow-lg hover:shadow-red-400/20 transition-all duration-300"
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="text-xl font-semibold text-white mb-1">
+                              {job.title}
+                            </h3>
+                            <p className="text-red-100">{job.company_name}</p>
+                            {job.location && <p className="text-red-200 text-sm">{job.location}</p>}
+                          </div>
+                          <Badge className="bg-red-500 text-white">
+                            {/* We don't have salary in backend; if you add salary field, include here */}
+                            {/* Placeholder: */}
+                            {job.job_field}
                           </Badge>
-                        ))}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {job.skills.map((skill) => (
+                            <Badge
+                              key={skill.id}
+                              variant={userSkills.some(s => s.id === skill.id) ? 'default' : 'outline'}
+                              className={
+                                userSkills.some(s => s.id === skill.id)
+                                  ? 'bg-green-500 text-white'
+                                  : 'border-red-300/50 text-red-200'
+                              }
+                            >
+                              {skill.name}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
 
           {/* Job Analysis */}
-          {showJobDetails && selectedJob && (
-            <Card className="bg-gradient-to-br from-red-900/30 to-black/60 border-red-500/30 backdrop-blur-sm shadow-2xl">
+          {selectedJob && (
+            <Card className="bg-gradient-to-br from-red-700/50 to-pink-800/40 border-red-300/40 backdrop-blur-sm shadow-2xl">
               <CardHeader>
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gradient-to-r from-red-600 to-red-800 rounded-lg">
+                  <div className="p-2 bg-gradient-to-r from-red-500 to-pink-600 rounded-lg">
                     <Trophy className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl text-white">Job Analysis: {selectedJob.title}</CardTitle>
-                    <CardDescription className="text-red-200">Skills match analysis</CardDescription>
+                    <CardTitle className="text-xl text-white">
+                      Job Analysis: {selectedJob.title}
+                    </CardTitle>
+                    <CardDescription className="text-red-100">
+                      Skills match analysis
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -402,40 +676,89 @@ const StudentDashboard = () => {
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-white font-medium">Skill Match</span>
-                      <span className="text-white font-bold">{getSkillMatchPercentage()}%</span>
+                      <span className="text-white font-bold">
+                        {getSkillMatchPercentage()}%
+                      </span>
                     </div>
-                    <Progress value={getSkillMatchPercentage()} className="h-3 bg-black/50" />
+                    <Progress
+                      value={getSkillMatchPercentage()}
+                      className="h-3 bg-red-800/50"
+                    />
                   </div>
 
+                  {/* Matching Skills */}
                   {getMatchingSkills().length > 0 && (
                     <div>
-                      <h4 className="text-lg font-semibold text-green-400 mb-3">✓ Skills You Have</h4>
+                      <h4 className="text-lg font-semibold text-green-300 mb-3">
+                        ✓ Skills You Have
+                      </h4>
                       <div className="flex flex-wrap gap-2">
-                        {getMatchingSkills().map(skill => (
-                          <Badge key={skill} className="bg-green-600 text-white">
-                            {skill}
+                        {getMatchingSkills().map((skill) => (
+                          <Badge
+                            key={skill.id}
+                            className="bg-green-500 text-white"
+                          >
+                            {skill.name}
                           </Badge>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {getMissingSkills().length > 0 ? (
+                  {/* Missing Skills */}
+                  {getMissingSkillsLocal().length > 0 ? (
                     <div>
-                      <h4 className="text-lg font-semibold text-red-400 mb-3">✗ Skills You Need</h4>
+                      <h4 className="text-lg font-semibold text-red-200 mb-3">
+                        ✗ Skills You Need
+                      </h4>
                       <div className="flex flex-wrap gap-2 mb-4">
-                        {getMissingSkills().map(skill => (
-                          <Badge key={skill} variant="outline" className="border-red-500 text-red-300">
-                            {skill}
+                        {getMissingSkillsLocal().map((skill) => (
+                          <Badge
+                            key={skill.id}
+                            variant="outline"
+                            className="border-red-300 text-red-200"
+                          >
+                            {skill.name}
                           </Badge>
                         ))}
                       </div>
+                      {/* Show suggestions from missingData, if loaded */}
+                      {loadingMissing ? (
+                        <p className="text-red-200">Loading suggestions…</p>
+                      ) : missingData ? (
+                        <div className="space-y-4">
+                          <h4 className="text-white font-medium">Recommendations:</h4>
+                          {Object.entries(missingData.suggestions).map(([skillName, certs]) => (
+                            <div key={skillName} className="space-y-2">
+                              <p className="text-red-200 font-medium">For skill: {skillName}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {certs.map(cert => (
+                                  <Button
+                                    key={cert.id}
+                                    size="sm"
+                                    className="bg-red-500 hover:bg-red-600 text-white"
+                                    onClick={() => window.open(cert.url, '_blank')}
+                                  >
+                                    {cert.name}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-red-200">No suggestions available.</p>
+                      )}
                     </div>
                   ) : (
-                    <div className="text-center p-6 bg-gradient-to-r from-green-900/20 to-green-800/20 rounded-lg border border-green-500/30">
-                      <Trophy className="h-16 w-16 text-green-400 mx-auto mb-4" />
-                      <h3 className="text-2xl font-bold text-green-400 mb-2">🎉 You're Ready!</h3>
-                      <p className="text-green-200">You have all the required skills for this job!</p>
+                    <div className="text-center p-6 bg-gradient-to-r from-green-800/30 to-green-700/30 rounded-lg border border-green-400/30">
+                      <Trophy className="h-16 w-16 text-green-300 mx-auto mb-4" />
+                      <h3 className="text-2xl font-bold text-green-300 mb-2">
+                        🎉 You’re Ready!
+                      </h3>
+                      <p className="text-green-100">
+                        You have all the required skills for this job!
+                      </p>
                     </div>
                   )}
                 </div>
@@ -443,104 +766,12 @@ const StudentDashboard = () => {
             </Card>
           )}
 
-          {/* Certifications and Courses */}
-          {showJobDetails && selectedJob && getMissingSkills().length > 0 && (
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* Certifications */}
-              {getRelevantCertifications().length > 0 && (
-                <Card className="bg-gradient-to-br from-red-900/30 to-black/60 border-red-500/30 backdrop-blur-sm shadow-2xl">
-                  <CardHeader>
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-gradient-to-r from-red-600 to-red-800 rounded-lg">
-                        <Award className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-xl text-white">Recommended Certifications</CardTitle>
-                        <CardDescription className="text-red-200">Get certified to fill skill gaps</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {getRelevantCertifications().map(cert => (
-                        <div key={cert.id} className="p-4 bg-gradient-to-r from-black/40 to-red-900/20 rounded-lg border border-red-500/20">
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-semibold text-white">{cert.name}</h4>
-                            <Badge className="bg-red-600 text-white">{cert.duration}</Badge>
-                          </div>
-                          <p className="text-red-200 text-sm mb-2">by {cert.provider}</p>
-                          <div className="flex flex-wrap gap-1 mb-3">
-                            {cert.skills.map(skill => (
-                              <Badge key={skill} variant="outline" className="text-xs border-red-500/50 text-red-300">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                          <Button 
-                            size="sm" 
-                            className="bg-red-600 hover:bg-red-700 text-white w-full"
-                            onClick={() => window.open(cert.link, '_blank')}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            View Certification
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Courses */}
-              {getRelevantCourses().length > 0 && (
-                <Card className="bg-gradient-to-br from-red-900/30 to-black/60 border-red-500/30 backdrop-blur-sm shadow-2xl">
-                  <CardHeader>
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-gradient-to-r from-red-600 to-red-800 rounded-lg">
-                        <BookOpen className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-xl text-white">Recommended Courses</CardTitle>
-                        <CardDescription className="text-red-200">Learn through comprehensive courses</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {getRelevantCourses().map(course => (
-                        <div key={course.id} className="p-4 bg-gradient-to-r from-black/40 to-red-900/20 rounded-lg border border-red-500/20">
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-semibold text-white">{course.name}</h4>
-                            <Badge className="bg-red-600 text-white">{course.duration}</Badge>
-                          </div>
-                          <p className="text-red-200 text-sm mb-2">by {course.provider}</p>
-                          <div className="flex flex-wrap gap-1 mb-3">
-                            {course.skills.map(skill => (
-                              <Badge key={skill} variant="outline" className="text-xs border-red-500/50 text-red-300">
-                                {skill}
-                              </Badge>
-                            ))}
-                          </div>
-                          <Button 
-                            size="sm" 
-                            className="bg-red-600 hover:bg-red-700 text-white w-full"
-                            onClick={() => window.open(course.link, '_blank')}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            View Course
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
+          {/* (Optional) Further Recommendations: courses, etc. */}
+          {/* You can implement similar pattern: fetch from /api/courses/?skill=<name> or your own endpoints */}
         </div>
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default StudentDashboard;
+export default StudentDashboard

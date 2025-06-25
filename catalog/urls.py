@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     MajorList, MajorSkillsDetail,
-    ProfileDetail, JobSearch, MissingSkills, FacultyProfileDetail,
+    ProfileDetail, JobSearch, MissingSkills, FacultyProfileDetail, JobFieldList,
 )
 
 urlpatterns = [
@@ -11,5 +11,6 @@ urlpatterns = [
     path("faculty/profile/",         FacultyProfileDetail.as_view(), name="faculty-profile"),
     path("jobs/",                          JobSearch.as_view(),       name="job-search"),
     path("jobs/<int:pk>/missing/",         MissingSkills.as_view(),   name="missing-skills"),
+    path("jobfields/", JobFieldList.as_view(), name="jobfield-list"),
 ]
 
