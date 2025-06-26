@@ -27,17 +27,20 @@ class MajorSkillsSerializer(serializers.ModelSerializer):
 
 class ProfileSerializer(serializers.ModelSerializer):
     skills = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Skill.objects.all()
+        many=True,
+        queryset=Skill.objects.all()
     )
+
     class Meta:
-        model = StudentProfile
-        fields = ["major","skills"]
+        model  = StudentProfile
+        fields = ['major', 'skills']
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["skills"] = SkillSerializer(instance.skills.all(), many=True).data
-        data["major"]  = MajorSerializer(instance.major).data if instance.major else None
+        data['major']  = MajorSerializer(instance.major).data if instance.major else None
+        data['skills'] = SkillSerializer(instance.skills.all(), many=True).data
         return data
-
+    
 class JobPostingSerializer(serializers.ModelSerializer):
     skills = SkillSerializer(many=True)
     job_field = serializers.CharField(source='job_field.name', read_only=True)

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useAuth } from "@/App"
 import { useNavigate } from 'react-router-dom';
-import { apiFetch } from "@/lib/api";
+import { getStudentToken, getFacultyToken ,apiFetch } from "@/lib/api";
 import {
   Card,
   CardContent,
@@ -23,19 +23,6 @@ import {
   Target,
 } from 'lucide-react';
 
-// Helper to fetch a token from your DRF endpoint
-async function getToken(email: string, password: string): Promise<string> {
-  const res = await fetch('http://127.0.0.1:8000/api/email-token-auth/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.detail || 'Login failed');
-  }
-  return data.token;
-}
 
 const Index: React.FC = () => {
   const { setToken } = useAuth()
@@ -64,7 +51,7 @@ const Index: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
-      const token = await getToken(studentLogin.email, studentLogin.password);
+      const token = await getStudentToken(studentLogin.email, studentLogin.password)
       setToken(token)
       localStorage.setItem('userType', 'student');
       navigate('/student-dashboard');
@@ -80,15 +67,12 @@ const Index: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
-      const token = await getToken(
-        facultyLogin.email,
-        facultyLogin.password,
-      );
+      const token = await getFacultyToken(facultyLogin.email, facultyLogin.password)
       setToken(token)
       localStorage.setItem('userType', 'faculty');
       navigate('/faculty-dashboard');
     } catch (err: any) {
-      setError(err.message);
+      setError("Invalid credentials or not authorized as faculty.");
     }
   };
 

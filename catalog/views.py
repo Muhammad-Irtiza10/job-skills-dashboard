@@ -25,6 +25,16 @@ from django.contrib.auth import authenticate, get_user_model
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.authtoken.models import Token
+from rest_framework import filters
+from rest_framework.authtoken.views import ObtainAuthToken
+
+
+class SkillListCreate(generics.ListCreateAPIView):
+    queryset = Skill.objects.all()
+    serializer_class = SkillSerializer
+
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
 
 
 class JobFieldList(generics.ListAPIView):
@@ -63,7 +73,13 @@ class ProfileDetail(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
-
+    
+    def patch(self, request):
+        prof = request.user.profile
+        serializer = ProfileSerializer(prof, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 #
 # 4) /api/jobs/?title=Foo  →  list job postings filtered by title substring
@@ -136,6 +152,31 @@ class FacultyProfileDetail(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class FacultyAuthToken(ObtainAuthToken):
+    """
+    Like the normal token-auth endpoint, but only issues a token
+    if the user is staff.  Otherwise returns 400 Invalid credentials.
+    """
+    def post(self, request, *args, **kwargs):
+        # 1) validate username/password
+        serializer = self.serializer_class(
+            data=request.data, context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+
+        # 2) enforce staff-only
+        if not user.is_staff:
+            return Response(
+                {'detail': 'Invalid credentials.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 3) get or create token
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({'token': token.key})
 
 
 
