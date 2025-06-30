@@ -28,6 +28,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework import filters
 from rest_framework.authtoken.views import ObtainAuthToken
 
+User = get_user_model()
 
 class SkillListCreate(generics.ListCreateAPIView):
     queryset = Skill.objects.all()
@@ -154,32 +155,46 @@ class FacultyProfileDetail(APIView):
         return Response(serializer.data)
 
 
-class FacultyAuthToken(ObtainAuthToken):
+@method_decorator(csrf_exempt, name="dispatch")
+class FacultyEmailAuthToken(APIView):
     """
-    Like the normal token-auth endpoint, but only issues a token
-    if the user is staff.  Otherwise returns 400 Invalid credentials.
+    POST /api/faculty-token-auth/
+    Accepts { email, password } just like EmailAuthToken,
+    but only returns a token if user.is_staff==True.
     """
-    def post(self, request, *args, **kwargs):
-        # 1) validate username/password
-        serializer = self.serializer_class(
-            data=request.data, context={'request': request}
-        )
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
-        # 2) enforce staff-only
-        if not user.is_staff:
+    def post(self, request, *args, **kwargs):
+        email = request.data.get("email")
+        password = request.data.get("password")
+        if not email or not password:
             return Response(
-                {'detail': 'Invalid credentials.'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"detail": "Email and password required."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 3) get or create token
+        # look up by email
+        try:
+            user_obj = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "Invalid credentials."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # authenticate via their username
+        user = authenticate(
+            request, username=user_obj.username, password=password
+        )
+        if not user or not user.is_staff:
+            return Response(
+                {"detail": "Invalid credentials or not authorized as faculty."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         token, _ = Token.objects.get_or_create(user=user)
-        return Response({'token': token.key})
-
-
-
+        return Response({"token": token.key})
 
 class RegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]

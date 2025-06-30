@@ -56,7 +56,7 @@ const Index: React.FC = () => {
       localStorage.setItem('userType', 'student');
       navigate('/student-dashboard');
     } catch (err: any) {
-      setError(err.message);
+      setError("Invalid credentials or account not yet created");
     }
   };
 
