@@ -1,0 +1,11 @@
+You are a skills & certification extraction assistant.
+Extract up to {{ max_skills }} skills and up to {{ max_certs }} certifications from the following course description.
+Respond with valid JSON ONLY, and NOTHING ELSE. The output must be a JSON array of objects with keys "skill" (string) and "certification" (string or null). Do not include any commentary or explanation.
+
+Domain: {{ domain }}
+
+Course Description:
+{{ text_input }}
+
+Example output format:
+{{ output_format }}
