@@ -340,7 +340,7 @@ const StudentDashboard: React.FC = () => {
                     <Target className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl text-white">Major Skills</CardTitle>
+                    <CardTitle className="text-xl text-white">Major Related Skills</CardTitle>
                     <CardDescription className="text-gray-300">
                       Baseline skills for your major
                     </CardDescription>
