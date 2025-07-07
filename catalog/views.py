@@ -25,6 +25,17 @@ from django.contrib.auth import authenticate, get_user_model
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.authtoken.models import Token
+from rest_framework import filters
+from rest_framework.authtoken.views import ObtainAuthToken
+
+User = get_user_model()
+
+class SkillListCreate(generics.ListCreateAPIView):
+    queryset = Skill.objects.all()
+    serializer_class = SkillSerializer
+
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
 
 
 class JobFieldList(generics.ListAPIView):
@@ -63,7 +74,13 @@ class ProfileDetail(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
-
+    
+    def patch(self, request):
+        prof = request.user.profile
+        serializer = ProfileSerializer(prof, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 #
 # 4) /api/jobs/?title=Foo  →  list job postings filtered by title substring
@@ -138,7 +155,46 @@ class FacultyProfileDetail(APIView):
         return Response(serializer.data)
 
 
+@method_decorator(csrf_exempt, name="dispatch")
+class FacultyEmailAuthToken(APIView):
+    """
+    POST /api/faculty-token-auth/
+    Accepts { email, password } just like EmailAuthToken,
+    but only returns a token if user.is_staff==True.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
+    def post(self, request, *args, **kwargs):
+        email = request.data.get("email")
+        password = request.data.get("password")
+        if not email or not password:
+            return Response(
+                {"detail": "Email and password required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # look up by email
+        try:
+            user_obj = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "Invalid credentials."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # authenticate via their username
+        user = authenticate(
+            request, username=user_obj.username, password=password
+        )
+        if not user or not user.is_staff:
+            return Response(
+                {"detail": "Invalid credentials or not authorized as faculty."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({"token": token.key})
 
 class RegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]

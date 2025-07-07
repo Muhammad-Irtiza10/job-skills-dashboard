@@ -1,9 +1,6 @@
 from rest_framework import serializers
 from .models import Major, Skill, JobPosting, StudentProfile, Certification, FacultyProfile
-
-
 from django.contrib.auth import get_user_model
-
 from rest_framework import serializers
 from .models import JobField
 
@@ -25,19 +22,50 @@ class MajorSkillsSerializer(serializers.ModelSerializer):
         model = Major
         fields = ["id","name","skills"]
 
+
+
 class ProfileSerializer(serializers.ModelSerializer):
     skills = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Skill.objects.all()
+        many=True,
+        queryset=Skill.objects.all()
     )
+    first_name = serializers.CharField(source="user.first_name")
+    last_name  = serializers.CharField(source="user.last_name")
+    email      = serializers.EmailField(source="user.email")
+
     class Meta:
-        model = StudentProfile
-        fields = ["major","skills"]
+        model  = StudentProfile
+        fields = [ "first_name", "last_name", "email",
+            "company_name", "job_title", "other_job_title",
+            "bio", "phone_primary", "phone_secondary", "phone_work",
+            "major", "skills",]
+    
+    def update(self, instance, validated_data):
+        # Pull out any user-specific data
+        user_data = validated_data.pop("user", {})
+
+        # Update the User object
+        user = instance.user
+        for attr, value in user_data.items():
+            setattr(user, attr, value)
+        user.save()
+
+        # Let DRF handle the rest of the profile fields
+        return super().update(instance, validated_data)
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["skills"] = SkillSerializer(instance.skills.all(), many=True).data
-        data["major"]  = MajorSerializer(instance.major).data if instance.major else None
+        data['major']  = MajorSerializer(instance.major).data if instance.major else None
+        data['skills'] = SkillSerializer(instance.skills.all(), many=True).data
+        data['company_name']    = instance.company_name
+        data['job_title']       = instance.job_title
+        data['other_job_title'] = instance.other_job_title
+        data['bio']             = instance.bio
+        data['phone_primary']   = instance.phone_primary
+        data['phone_secondary'] = instance.phone_secondary
+        data['phone_work']      = instance.phone_work
         return data
-
+    
 class JobPostingSerializer(serializers.ModelSerializer):
     skills = SkillSerializer(many=True)
     job_field = serializers.CharField(source='job_field.name', read_only=True)
@@ -68,28 +96,62 @@ class FacultyProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["user"]
 
-
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    first_name       = serializers.CharField()
+    last_name        = serializers.CharField()
+    company_name     = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    job_title        = serializers.ChoiceField(write_only=True, choices=StudentProfile.JOB_TITLE_CHOICES)
+    other_job_title  = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    bio              = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    phone_primary    = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    phone_secondary  = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    phone_work       = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
     class Meta:
         model = User
-        fields = ("username","email","password","first_name","last_name")
+        fields = [
+          'username','email','password',
+          'first_name','last_name','company_name','job_title','other_job_title',
+            'bio','phone_primary','phone_secondary','phone_work',
+        ]
+        extra_kwargs = {'password': {'write_only': True}}
 
-    def create(self, validated):
+    def create(self, validated_data):
+        # 1) Pop off user‐fields
+        username  = validated_data.pop("username")
+        email     = validated_data.pop("email")
+        password  = validated_data.pop("password")
+        first     = validated_data.pop("first_name", "")
+        last      = validated_data.pop("last_name", "")
+
+        # 2) Create the User
         user = User.objects.create_user(
-            username=validated["username"],
-            email=validated.get("email",""),
-            password=validated["password"],
-            first_name=validated.get("first_name",""),
-            last_name=validated.get("last_name",""),
+            username=username,
+            email=email,
+            password=password,
+            first_name=first,
+            last_name=last,
         )
-        # StudentProfile will be auto-created by your post_save signal
+
+        # 3) Build or update the StudentProfile
+        StudentProfile.objects.update_or_create(
+            user=user,
+            defaults={
+                "company_name":     validated_data.pop("company_name", ""),
+                "job_title":        validated_data.pop("job_title", ""),
+                "other_job_title":  validated_data.pop("other_job_title", ""),
+                "bio":              validated_data.pop("bio", ""),
+                "phone_primary":    validated_data.pop("phone_primary", ""),
+                "phone_secondary":  validated_data.pop("phone_secondary", ""),
+                "phone_work":       validated_data.pop("phone_work", ""),
+            }
+        )
+
         return user
-
-
 
 class JobFieldSerializer(serializers.ModelSerializer):
     class Meta:
         model = JobField
         fields = ['id', 'name']
+
 

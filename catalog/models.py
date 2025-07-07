@@ -172,38 +172,33 @@ class JobPosting(models.Model):
 
 
 class StudentProfile(models.Model):
-    """
-    Extends Django's User to include academic and skill data.
-    - A student's initial skills come from their Major (Major.skills)
-    - Later, when they complete electives or certifications, you add those Skills to their profile.
-    """
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='profile'
     )
     major = models.ForeignKey(
-        Major,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='students'
+        Major, on_delete=models.SET_NULL, null=True, blank=True, related_name='students'
     )
-
-    # ←−− StudentProfile.skills is a separate M2M to Skill
-    skills = models.ManyToManyField(
-        Skill,
-        related_name='students',
-        blank=True,
-        help_text="Actual skills this student has (from major, electives, certifications)"
-    )
-
+    skills = models.ManyToManyField(Skill, related_name='students', blank=True)
     date_joined = models.DateField(auto_now_add=True)
+
+    # ← new fields:
+    company_name    = models.CharField(max_length=200, blank=True)
+    JOB_TITLE_CHOICES = [
+      ('student', 'Student'),
+      ('alumni', 'Alumni'),
+      ('other',   'Other'),
+    ]
+    job_title       = models.CharField(max_length=20, choices=JOB_TITLE_CHOICES, blank=True)
+    other_job_title = models.CharField(max_length=100, blank=True, help_text="If you selected Other")
+    bio             = models.TextField(blank=True)
+    phone_primary   = models.CharField(max_length=20, blank=True)
+    phone_secondary = models.CharField(max_length=20, blank=True)
+    phone_work      = models.CharField(max_length=20, blank=True)
 
     def __str__(self):
         return self.user.get_full_name() or self.user.username
-
-
 
 class FacultyProfile(models.Model):
     """
