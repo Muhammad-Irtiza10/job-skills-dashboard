@@ -78,7 +78,7 @@ interface JobField {
 
 const StudentDashboard: React.FC = () => {
   const navigate = useNavigate()
-
+  
   // Profile + major
   const [majors, setMajors] = useState<Major[]>([])
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
@@ -194,6 +194,18 @@ const StudentDashboard: React.FC = () => {
     }
   }
 
+  // flatten every word from your skills into a Set for quick lookup
+  const userTokenSet = new Set<string>(
+    userSkills
+      .flatMap(us =>
+        us.name
+          .toLowerCase()
+          .split(/\W+/)       // split on non-word
+          .filter(Boolean)
+      )
+  );
+
+
   // --- 4c) Remove skill ---
   const removeSkill = (skill: Skill) => {
     const next = userSkills.filter(s => s.id !== skill.id)
@@ -227,21 +239,79 @@ const StudentDashboard: React.FC = () => {
   }
 
   // --- Helpers for match % ---
-  const getMatchingSkills = () => {
-    if (!selectedJob) return [] as Skill[]
-    const ids = new Set(selectedJob.skills.map(s=>s.id))
-    return userSkills.filter(s => ids.has(s.id))
-  }
-  const getMissingLocal = () => {
-    if (!selectedJob) return [] as Skill[]
-    const ids = new Set(userSkills.map(s=>s.id))
-    return selectedJob.skills.filter(s => !ids.has(s.id))
-  }
+  const getMatchingSkills = (): Skill[] => {
+    if (!selectedJob) return [];
+
+    // 1) Build a Set of every “word” token from the job’s skill names
+    const jobTokens = new Set<string>();
+    selectedJob.skills.forEach((s) => {
+      s.name
+        .toLowerCase()
+        .split(/\W+/)       // split on non-word chars (spaces, punctuation)
+        .filter(Boolean)    // drop empty strings
+        .forEach(tok => jobTokens.add(tok));
+    });
+
+    console.log("▶️ JOB TOKENS:", Array.from(jobTokens));
+
+    // 2) Keep only user‐skills that share at least one token
+    return userSkills.filter((us) => {
+      const userTokens = us.name
+        .toLowerCase()
+        .split(/\W+/)
+        .filter(Boolean);
+
+      const matched = userTokens.some(tok => jobTokens.has(tok));
+      if (matched) console.log(`✅ MATCHED:`, us.name, "via tokens", userTokens);
+      return matched;
+    });
+  };
+
+ // these are the actual job‐skill objects…
+  const haveSkills = selectedJob
+    ? selectedJob.skills.filter(js => {
+        const tokens = js.name
+          .toLowerCase()
+          .split(/\W+/)
+          .filter(Boolean);
+        return tokens.some(tok => userTokenSet.has(tok));
+      })
+    : [];
+
+  // and anything _not_ in haveSkills is truly missing:
+  const needSkills = selectedJob
+    ? selectedJob.skills.filter(js => 
+        !haveSkills.includes(js)
+      )
+    : [];
+
+  //const getMatchingSkills = () => {
+   // if (!selectedJob) return [] as Skill[]
+   // const ids = new Set(selectedJob.skills.map(s=>s.id))
+   // return userSkills.filter(s => ids.has(s.id))
+  //}
+
+  //const getMissingLocal = (): Skill[] => {
+    //if (!selectedJob) return []
+    //const haveNames = userSkills.map(s => s.name.toLowerCase())
+    //return selectedJob.skills.filter(js => {
+      //const j = js.name.toLowerCase()
+      // consider “have” if any your skill overlaps textually
+      //const matched = haveNames.some(hn => hn.includes(j) || j.includes(hn))
+      //return !matched
+   // })
+  //}
+  //const getMissingLocal = () => {
+    //if (!selectedJob) return [] as Skill[]
+    //const ids = new Set(userSkills.map(s=>s.id))
+    //return selectedJob.skills.filter(s => !ids.has(s.id))
+  //}
   const getMatchPct = () => {
     if (!selectedJob) return 0
     const total = selectedJob.skills.length
     if (!total) return 0
-    return Math.round((getMatchingSkills().length/total)*100)
+    const matched = getMatchingSkills().length
+    return Math.round((matched / total) * 100)
   }
 
   // --- Loading skeleton ---
@@ -508,44 +578,66 @@ const StudentDashboard: React.FC = () => {
                 </div>
               </div>
             </CardHeader>
+
             <CardContent>
               {loadingJobs ? (
                 <p className="text-gray-300">Loading jobs…</p>
-              ) : !jobs.length ? (
+              ) : jobs.length === 0 ? (
                 <p className="text-gray-300">No jobs found.</p>
               ) : (
                 <div className="space-y-4">
-                  {jobs.map(job => (
-                    <div
-                      key={job.id}
-                      onClick={()=>handleJobSelect(job)}
-                      className="cursor-pointer p-4 bg-[#300000] rounded-lg border border-black/20 hover:border-red-600"
-                    >
-                      <h3 className="text-lg font-semibold text-white">
-                        {job.title}
-                      </h3>
-                      <p className="text-gray-300">{job.company_name}</p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {job.skills.map(sk=>(
-                          <Badge
-                            key={sk.id}
-                            className={
-                              userSkills.some(u=>u.id===sk.id)
-                                ? 'bg-green-500 text-white'
-                                : 'bg-red-600 text-white'
-                            }
-                          >
-                            {sk.name}
-                          </Badge>
-                        ))}
+                  {jobs.map((job) => {
+                    // build a Set of all your skill‐names (lowercased & trimmed)
+                    const mySkills = new Set(
+                      userSkills.map((u) => u.name.toLowerCase().trim())
+                    );
+
+                    return (
+                      <div
+                        key={job.id}
+                        onClick={() => handleJobSelect(job)}
+                        className="cursor-pointer p-4 bg-[#300000] rounded-lg border border-black/20 hover:border-red-600"
+                      >
+                        <h3 className="text-lg font-semibold text-white">
+                          {job.title}
+                        </h3>
+                        <p className="text-gray-300">{job.company_name}</p>
+
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {(job.skills || []).map((sk) => {
+                            // split the job‐skill into words/tokens
+                            const tokens = sk.name
+                              .toLowerCase()
+                              .split(/\W+/)
+                              .filter(Boolean);
+
+                            // check if any token is one of your skills
+                            const isMatch = tokens.some((t) => mySkills.has(t));
+
+                            return (
+                              <Badge
+                                key={sk.id}
+                                className={`px-3 py-1 ${
+                                  isMatch
+                                    ? "bg-green-500 text-white"
+                                    : "bg-red-600 text-white"
+                                }`}
+                              >
+                                {sk.name}
+                              </Badge>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
           </Card>
         )}
+
+
 
         {/* Job Analysis */}
         {selectedJob && (
@@ -577,12 +669,12 @@ const StudentDashboard: React.FC = () => {
                   className="h-3 bg-[#300000] mt-1"
                 />
               </div>
-              {/* ✓ Have */}
-              {getMatchingSkills().length>0 && (
+              {/* ✓ You have */}
+              {haveSkills.length > 0 && (
                 <div>
                   <h4 className="text-green-400 font-semibold mb-2">✓ You have:</h4>
                   <div className="flex flex-wrap gap-2">
-                    {getMatchingSkills().map(s=>(
+                    {haveSkills.map(s => (
                       <Badge key={s.id} className="bg-green-500 text-white">
                         {s.name}
                       </Badge>
@@ -590,53 +682,62 @@ const StudentDashboard: React.FC = () => {
                   </div>
                 </div>
               )}
-              {/* ✗ Need */}
-              {getMissingLocal().length>0 ? (
+
+              {/* ✗ You need */}
+              {needSkills.length > 0 ? (
                 <div>
                   <h4 className="text-red-400 font-semibold mb-2">✗ You need:</h4>
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {getMissingLocal().map(s=>(
+                    {needSkills.map(s => (
                       <Badge key={s.id} className="bg-red-600 text-white">
                         {s.name}
                       </Badge>
                     ))}
                   </div>
+
                   {loadingMissing ? (
                     <p className="text-gray-300">Loading suggestions…</p>
                   ) : missingData ? (
                     <div className="space-y-4">
-                      {Object.entries(missingData.suggestions).map(([skill, recs])=>(
-                        <div key={skill}>
-                          <p className="text-gray-300 mb-2">For {skill}:</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                           {recs.map(cert => (
-                             <Card
-                               key={cert.id}
-                               className="bg-red-800/50 border-red-400/30 hover:shadow-xl transition-shadow"
-                             >
-                               <CardHeader>
-                                 <CardTitle className="text-lg text-white">{cert.name}</CardTitle>
-                                 <CardDescription className="text-sm text-red-200">
-                                   {cert.provider}
-                                 </CardDescription>
-                               </CardHeader>
-                               <CardContent className="flex flex-col justify-between">
-                                 <p className="text-red-100 text-sm mb-4">
-                                   Relevance: {Math.round(cert.relevance_score * 100)}%
-                                 </p>
-                                 <Button
-                                   size="sm"
-                                   className="mt-auto bg-red-500 hover:bg-red-600 text-white"
-                                   onClick={() => window.open(cert.url, '_blank')}
-                                 >
-                                   View Course
-                                 </Button>
-                               </CardContent>
-                             </Card>
-                           ))}
-                         </div>
-                        </div>
-                      ))}
+                      {Object.entries(missingData.suggestions)
+                        // only show suggestions for truly missing skills
+                        .filter(([skillName]) =>
+                          needSkills.some(ms => ms.name === skillName)
+                        )
+                        .map(([skillName, recs]) => (
+                          <div key={skillName}>
+                            <p className="text-gray-300 mb-2">For {skillName}:</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {recs.map(cert => (
+                                <Card
+                                  key={cert.id}
+                                  className="bg-red-800/50 border-red-400/30 hover:shadow-xl transition-shadow"
+                                >
+                                  <CardHeader>
+                                    <CardTitle className="text-lg text-white">
+                                      {cert.name}
+                                    </CardTitle>
+                                    <CardDescription className="text-sm text-red-200">
+                                      {cert.provider}
+                                    </CardDescription>
+                                  </CardHeader>
+                                  <CardContent className="flex flex-col justify-between">
+                                    <p className="text-red-100 text-sm mb-4">
+                                      Relevance: {Math.round(cert.relevance_score * 100)}%
+                                    </p>
+                                    <Button
+                                      size="sm"
+                                      className="mt-auto bg-red-500 hover:bg-red-600 text-white"
+                                      onClick={() => window.open(cert.url, '_blank')}
+                                    >
+                                      View Course
+                                    </Button>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                     </div>
                   ) : (
                     <p className="text-gray-300">No recs found.</p>
@@ -649,6 +750,7 @@ const StudentDashboard: React.FC = () => {
                   <p className="text-green-200">You have all required skills.</p>
                 </div>
               )}
+
             </CardContent>
           </Card>
         )}
