@@ -18,6 +18,18 @@ class Skill(models.Model):
         help_text="(Optional) Comma-separated tags or related skill clusters"
     )
 
+    CATEGORY_CHOICES = [
+      ('major',     'Major-Related'),
+      ('technical', 'Technical'),
+      ('soft',      'Soft'),
+    ]
+    category = models.CharField(
+      max_length=10,
+      choices=CATEGORY_CHOICES,
+      default='major',
+      help_text="Whether this is a major-related, technical, or soft skill"
+    )
+
     def __str__(self):
         return self.name
 

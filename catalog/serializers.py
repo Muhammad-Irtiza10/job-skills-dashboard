@@ -17,11 +17,28 @@ class MajorSerializer(serializers.ModelSerializer):
         fields = ["id","name","department","description"]
 
 class MajorSkillsSerializer(serializers.ModelSerializer):
-    skills = SkillSerializer(many=True)
-    class Meta:
-        model = Major
-        fields = ["id","name","skills"]
+    major_related_skills = serializers.SerializerMethodField()
+    technical_skills     = serializers.SerializerMethodField()
+    soft_skills          = serializers.SerializerMethodField()
 
+    class Meta:
+        model  = Major
+        fields = ["id", "name",
+                  "major_related_skills",
+                  "technical_skills",
+                  "soft_skills"]
+
+    def get_major_related_skills(self, major):
+        qs = major.skills.filter(category='major')
+        return SkillSerializer(qs, many=True).data
+
+    def get_technical_skills(self, major):
+        qs = major.skills.filter(category='technical')
+        return SkillSerializer(qs, many=True).data
+
+    def get_soft_skills(self, major):
+        qs = major.skills.filter(category='soft')
+        return SkillSerializer(qs, many=True).data
 
 
 class ProfileSerializer(serializers.ModelSerializer):

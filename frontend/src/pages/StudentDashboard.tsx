@@ -76,13 +76,63 @@ interface JobField {
   name: string
 }
 
+interface SkillCardProps {
+  title: string
+  skills: Skill[]
+  onAdd: (skill: Skill) => void
+  userSkills: Skill[]        // ← new prop
+}
+
+interface MajorSkillsResponse {
+  id: number
+  name: string
+  major_related_skills: Skill[]
+  technical_skills: Skill[]
+  soft_skills: Skill[]
+}
+
+const SkillCard: React.FC<SkillCardProps> = ({
+  title,
+  skills,
+  onAdd,
+  userSkills,
+}) => (
+  <Card className="rounded-2xl shadow p-4">
+    <CardHeader>
+      <CardTitle>{title}</CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-2">
+      {skills.length > 0 ? (
+        skills.map(s => (
+          <div key={s.id} className="flex justify-between items-center">
+            <span>{s.name}</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onAdd(s)}
+              // use the new prop here instead of userSkills
+              disabled={userSkills.some(u => u.id === s.id)}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        ))
+      ) : (
+        <p className="text-sm text-gray-500">
+          No skills in this category
+        </p>
+      )}
+    </CardContent>
+  </Card>
+)
+
 const StudentDashboard: React.FC = () => {
   const navigate = useNavigate()
   
   // Profile + major
   const [majors, setMajors] = useState<Major[]>([])
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
-  const [majorSkills, setMajorSkills] = useState<Skill[]>([])
+  const [majorSkills, setMajorSkills] = useState<MajorSkillsResponse | null>(null)
   const [userSkills, setUserSkills] = useState<ApiSkill[]>([])
   const [customSkill, setCustomSkill] = useState<string>('')
 
@@ -100,6 +150,7 @@ const StudentDashboard: React.FC = () => {
   const [loadingJobs, setLoadingJobs] = useState(false)
   const [loadingMissing, setLoadingMissing] = useState(false)
 
+  
   // --- 1) On mount: fetch profile, majors, jobFields ---
   useEffect(() => {
     apiFetch('/profile/')
@@ -128,11 +179,16 @@ const StudentDashboard: React.FC = () => {
 
   // --- 2) Fetch majorSkills when major changes ---
   useEffect(() => {
-    if (!selectedMajorId) return setMajorSkills([])
-    apiFetch(`/majors/${selectedMajorId}/skills/`)
-      .then((m: { skills: Skill[] }) => setMajorSkills(m.skills))
-      .catch(() => setMajorSkills([]))
-  }, [selectedMajorId])
+  if (!selectedMajorId) {
+    setMajorSkills(null)
+    return
+  }
+
+  apiFetch(`/majors/${selectedMajorId}/skills/`)
+    .then((maj: MajorSkillsResponse) => setMajorSkills(maj))
+    .catch(() => setMajorSkills(null))
+}, [selectedMajorId])
+
 
   // --- 3) Update profile.major on backend ---
   useEffect(() => {
@@ -401,16 +457,16 @@ const StudentDashboard: React.FC = () => {
 
         {/* Skills management */}
         {selectedMajorId && (
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-12 gap-6">
             {/* Major Skills */}
-            <Card className="bg-gradient-to-br from-[#2b0000]/50 via-[#550000]/50 to-[#2b0000]/50 border-black/30 shadow-lg">
+            <Card className="col-span-12 md:col-span-8 bg-gradient-to-br from-[#2b0000]/50 via-[#550000]/50 to-[#2b0000]/50 border-black/30 shadow-lg">
               <CardHeader>
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-red-600 rounded-lg">
                     <Target className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl text-white">Major Related Skills</CardTitle>
+                    <CardTitle className="text-xl text-white">Skills</CardTitle>
                     <CardDescription className="text-gray-300">
                       Baseline skills for your major
                     </CardDescription>
@@ -418,30 +474,35 @@ const StudentDashboard: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {majorSkills.map(s => (
-                  <div
-                    key={s.id}
-                    className="flex justify-between items-center p-3 bg-[#300000] rounded-lg border border-black/20"
-                  >
-                    <span className="text-white">{s.name}</span>
-                    <Button
-                      size="sm"
-                      onClick={() => addSkillFromMajor(s)}
-                      disabled={userSkills.some(u=>u.id===s.id)}
-                      className="bg-red-600 hover:bg-black text-white"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                {majorSkills && (
+                  <div className="grid md:grid-cols-3 gap-6">
+                    {/* Major-Related */}
+                    <SkillCard
+                      title="Major-Related Skills"
+                      skills={majorSkills.major_related_skills}
+                      onAdd={addSkillFromMajor} userSkills={userSkills}                    />
+
+                    {/* Technical */}
+                    <SkillCard
+                      title="Technical Skills"
+                      skills={majorSkills.technical_skills}
+                      onAdd={addSkillFromMajor} userSkills={userSkills}                    />
+
+                    {/* Soft */}
+                    <SkillCard
+                      title="Soft Skills"
+                      skills={majorSkills.soft_skills}
+                      onAdd={addSkillFromMajor} userSkills={userSkills}                    />
                   </div>
-                ))}
-                {!majorSkills.length && (
+                )}
+                {majorSkills && majorSkills.major_related_skills.length === 0 && (
                   <p className="text-gray-400">No skills found for this major.</p>
                 )}
               </CardContent>
             </Card>
 
             {/* Additional Skills */}
-            <Card className="bg-gradient-to-br from-[#2b0000]/50 via-[#550000]/50 to-[#2b0000]/50 border-black/30 shadow-lg">
+            <Card className="col-span-12 md:col-span-4 bg-gradient-to-br from-[#2b0000]/50 via-[#550000]/50 to-[#2b0000]/50 border-black/30 shadow-lg">
               <CardHeader>
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-red-600 rounded-lg">

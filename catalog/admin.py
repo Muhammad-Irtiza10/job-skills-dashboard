@@ -18,9 +18,9 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
 @admin.register(Skill)
 class SkillAdmin(admin.ModelAdmin):
-    list_display = ("name", "frequency", "clusters")
+    list_display = ("name", "frequency", "clusters", "category")
     search_fields = ("name", "clusters")
-    list_filter = ("clusters",)
+    list_filter = ("clusters","category")
     ordering = ("name",)
 
 
