@@ -1,0 +1,130 @@
+Academic writing
+Critical reading and analysis
+Argument development
+Research methodology
+First-year academic orientation
+Campus resource navigation
+Time-management strategies
+Study‐skill development
+Word-processing proficiency
+Spreadsheet modeling (Excel)
+Presentation software skills
+Fundamentals of computer systems and networking
+Arabic reading comprehension
+Arabic cultural analysis
+Written expression in Modern Standard Arabic
+Critical interpretation of literary texts
+Design thinking fundamentals
+Entrepreneurial mindset cultivation
+Sustainability awareness
+Innovation workshop participation
+Islamic cultural studies
+Interdisciplinary research writing
+Cross-cultural communication
+Inductive and deductive reasoning
+Logical analysis and fallacy identification
+Critical thinking frameworks
+Ethical argumentation
+Advanced persuasive writing
+Rhetorical and discourse analysis
+Audience‐focused composition
+Interdisciplinary regional studies
+Historical and cultural interpretation
+Critical writing and discussion
+Calculus fundamentals: limits, derivatives, integrals
+Application of differentiation/integration to life-sciences problems 
+Human–environment interaction analysis
+Impact assessment of human activities
+Development of scientific thought and problem-solving 
+Understanding of cell chemistry
+Analysis of metabolic processes
+Foundational genetics concepts 
+Laboratory techniques in cell structure analysis
+Microscopy and plant biology basics 
+Introduction to genetics principles
+Fundamentals of microbiology
+Comparative animal form and function 
+Hands-on biology lab techniques
+Experimental design and data recording 
+Microbial classification and taxonomy
+Metabolic pathway analysis
+Microbial genetics fundamentals 
+Aseptic culturing techniques
+Microbial staining and identification
+Laboratory safety protocols 
+Heredity and inheritance mechanism analysis
+Modern genetics developments 
+Genetics lab methodologies
+Experimental genetics skills 
+Gene structure and expression analysis
+Mechanisms of genetic exchange and recombination 
+Applied and industrial microbiology techniques
+Fermentation technology applications 
+Laboratory isolation of industrial microbial strains
+Production and purification process skills 
+Biochemical compound structural analysis
+Enzyme kinetics and protein purification 
+Biochemistry wet-lab separation and quantification
+Dry-lab 3D macromolecule modeling (Geneious) 
+Bioenergetics and metabolic pathway interpretation
+Gene expression regulation overview 
+Virus classification and life-cycle analysis
+Host–virus interaction mechanisms 
+Overview of AI techniques in biotech
+AI decision-framework development 
+Theoretical foundations of biotechnology
+Real-world genetic-engineering applications 
+Fundamental biotech lab methods
+Hands-on techniques in molecular biology 
+Professional internship in biotech settings
+On-the-job training and workplace adaptability 
+Ethical analysis of biotechnology applications
+Research integrity and misconduct awareness 
+Research design and methodology
+Scientific literature evaluation and proposal writing 
+Seminar participation and presentation skills
+Critical discussion of biotechnology topics 
+Chemical equilibrium and acid–base concepts
+Thermochemistry, gas laws, and coordination chemistry 
+General chemistry lab techniques
+Synthesis of coordination complexes 
+Quantitative analysis and error evaluation
+Titration methods, spectroscopic and gravimetric techniques 
+Analytical reagent preparation and QA procedures
+Statistical evaluation of data and unknown analysis 
+Organic reaction mechanism understanding
+Synthetic technique foundations 
+Organic lab techniques: isolation and purification
+Spectroscopic compound identification 
+Environmental‐issue overview and analysis
+Human–environment relations and sustainability 
+Probability fundamentals
+Descriptive statistics and data interpretation 
+Food-biotechnology tool application
+Microbial strain improvement and ethical/regulatory analysis 
+Biopharmaceutical bioprocess design
+Fermentation, purification, and GMP practices
+Foundation of forensic chemistry: application of chemical principles to forensic problems
+Use of laboratory instrumentation and methods for crime-lab analyses
+Problem-solving skills for forensic scenarios 
+Laboratory techniques for trace-evidence analysis
+Sample preparation methods for forensic chemistry
+Chemical and instrumental methods for evidence identification 
+Application of genetic principles to forensic DNA typing
+Understanding of advanced molecular biology techniques for forensic sciences
+Forensic DNA analysis and criminal-investigation skills 
+DNA fingerprinting techniques in forensic laboratories
+Serological analysis methods for evidence examination
+Practical laboratory skills for DNA profiling 
+Crime-scene processing procedures and techniques
+Use of database technologies in crime-scene investigations
+DNA-analysis applications for forensic investigations 
+Understanding of criminal justice system structures
+Roles and functions of police in crime management
+Court-system processes and legal procedures 
+Biological-database search and retrieval strategies
+Sequence-comparison and analysis techniques
+Evaluation of protein and DNA characteristics using computational tools 
+Design and execution of forensic biology research projects
+Oral and written presentation of forensic research findings
+Integration of cell- and molecular-biotechnology techniques in forensic contexts 
