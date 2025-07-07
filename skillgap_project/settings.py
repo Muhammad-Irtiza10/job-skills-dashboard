@@ -94,9 +94,9 @@ DATABASES = {
   'default': {
     'ENGINE':   'django.db.backends.postgresql',
     'NAME':     'skillgap_prod',
-    'USER':     'postgres',
-    'PASSWORD': 'root',       # or whatever you set at install
-    'HOST':     'localhost',
+    'USER':     'irtiza',
+    'PASSWORD': 'StrongP@ssw0rd!',       # or whatever you set at install
+    'HOST':     '10.75.1.66',
     'PORT':     '5432',
   }
 }

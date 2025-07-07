@@ -6,3 +6,4 @@ venv/
 .idea/
 .vscode/
 node_modules/
+skillgap_project/settings.py
