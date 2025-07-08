@@ -1,0 +1,182 @@
+Arabic reading 
+Arabic writing 
+Arabic speaking 
+Arabic listening 
+Critical analysis of literary texts 
+Cultural contextualization of literature 
+Academic writing 
+Critical reading 
+Argument development 
+Research skills 
+Revision and editing techniques 
+Word processing proficiency 
+Spreadsheet management 
+Presentation software skills 
+Computer systems fundamentals 
+Networking basics 
+Computer security awareness 
+First-year transition strategies 
+Campus resource navigation 
+Academic adjustment skills 
+Design thinking fundamentals 
+Entrepreneurial mindset cultivation 
+Sustainability awareness 
+Inductive reasoning
+Deductive reasoning
+Logical analysis
+Fallacy identification
+Ethical reasoning
+Persuasive writing
+Rhetorical analysis
+Audience awareness
+Literary response techniques
+Islamic cultural analysis 
+Research-intensive writing 
+Cross-cultural communication 
+Interdisciplinary regional analysis 
+Cultural and historical comprehension 
+Critical writing skills 
+Supply-and-demand modeling 
+Market mechanism analysis 
+Resource allocation evaluation 
+Probability fundamentals 
+Descriptive statistics 
+Data interpretation 
+Journal entry preparation 
+Financial statement preparation 
+Double-entry accounting application 
+Ethical decision-making in accounting 
+Cost terminology mastery 
+Cost-volume-profit analysis 
+Job order/process costing 
+Budgeting techniques 
+Standard costing introduction 
+Capital budgeting basics 
+Ethical managerial accounting decisions 
+Descriptive analytics 
+Predictive modeling 
+Prescriptive analytics 
+Computer-based modeling 
+Business writing 
+Interdisciplinary communication 
+Learning-by-writing deliverables 
+Client and management reporting 
+Legal environment analysis 
+Regulatory compliance understanding 
+Contract examination 
+Business ethics comprehension 
+Global trade theory application 
+Foreign direct investment assessment 
+Global monetary systems analysis 
+International strategy formulation 
+Research methodology selection 
+Analytical technique application 
+Research proposal development 
+Policy analysis 
+Ethical decision-making frameworks 
+Stakeholder evaluation 
+Sustainability assessment 
+Strategic analysis 
+Big-picture decision-making 
+Integration of functional knowledge 
+Oral and written presentations 
+Macroeconomic modeling 
+National income accounting 
+Policy application analysis 
+Time value of money calculations
+Stock and bond valuation
+Capital budgeting techniques
+Financial ratio analysis
+Risk-return evaluation
+Financial statement analysis
+Financial forecasting
+Valuation modeling
+Risk-return application
+Planning and organizing 
+Leading and controlling functions 
+Management theory application 
+Team dynamics analysis 
+Motivation strategies 
+Leadership concept application 
+Communication practices 
+Database design fundamentals 
+Systems analysis skills 
+Web development basics 
+IT governance understanding 
+Market strategy development 
+Product positioning 
+Pricing tactics 
+Promotion planning 
+Distribution channel management 
+Linear programming 
+Inventory modeling 
+Queuing theory application 
+Simulation techniques
+Data pre-processing
+Classification
+Clustering
+Association rules
+Business intelligence applications
+Customer relationship management applications
+Marketing analytics
+Credit scoring analytics
+Churn analysis
+Survival analysis
+Big-data analytics fundamentals
+Hands-on RapidMiner usage
+Pattern discovery 
+Data collection
+Data cleaning
+Data manipulation
+Data analysis
+Data visualization
+Interactive dashboard design
+Best practices in data visualization
+Computing skills for visualization 
+Descriptive analytics
+Predictive modeling
+Prescriptive analytics
+Computer-based modeling 
+Orientation and induction to internship
+On-the-job training in business analytics
+Exposure to real-world business practices, culture, and management
+Knowledge-base development for professional practice 
+Database management systems fundamentals
+Data-warehousing principles
+Data-pipeline design and flow
+Mapping business use cases to data engineering solutions
+Deriving business value from data
+Developing, deploying, and configuring data-science applications 
+Business-intelligence theory and practice
+Big-data analytics methodologies
+MapReduce, Hadoop, and Spark technologies
+Data-analytics lifecycle management
+Tool and methodology selection for analytics challenges
+Facilitating data-driven decision-making 
+Quantitative research design (questionnaires; experiments; conjoint analysis)
+Qualitative research methods (focus groups; interviews)
+Primary and secondary data collection
+Problem formulation for research
+Managerial decision-support through research 
+Problem-solving skills
+Creative thinking
+Self-directed learning
+Integration of analytics tools and concepts
+Project-report development
+Coaching and mentoring collaboration 
+Accounting-data modeling
+Internal-control design
+XBRL implementation
+Commercial AIS (Accounting Information Systems) usage 
+Financial-statement analysis
+Financial forecasting techniques
+Valuation modeling
+Risk-return analysis 
+Global supply-chain management
+Procurement-strategy development
+E-commerce integration in supply chains
+Information-technology applications in SCM
+Logistics-process coordination
+Supply-chain process integration 
+Operations-management planning and decision-making
+Analytical modeling for production and service operations planning and control 
