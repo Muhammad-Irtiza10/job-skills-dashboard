@@ -1,0 +1,24 @@
+# Keep the backend build small: only manage.py, skillgap_project/ and catalog/ are copied in.
+.git
+.venv
+venv
+frontend
+node_modules
+media
+sent_emails
+staticfiles
+.env
+*.backup
+*.csv
+*.pdf
+*.png
+*.ipynb
+docs
+Documents
+Coursera_Scrapper
+code_lists
+skill_lists
+data
+backend
+__pycache__
+*.pyc

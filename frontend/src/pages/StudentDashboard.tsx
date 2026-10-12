@@ -12,9 +12,8 @@ import {
   CardDescription,
   CardContent,
 } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectTrigger,
@@ -22,21 +21,30 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import {
   User,
-  BookOpen,
-  Target,
-  Award,
   Plus,
   X,
-  ExternalLink,
+  Check,
   GraduationCap,
   Briefcase,
   Trophy,
+  LayoutDashboard,
+  CircleDot,
+  Route,
+  ArrowRight,
+  ArrowUpRight,
+  CircleCheck,
+  CircleDashed,
+  BookOpen,
+  LogOut,
+  MousePointerClick,
+  TrainFront,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
+import AppHeader from '@/components/AppHeader'
+import { BarList, EmptyNote, MatchDial } from '@/components/charts'
+import { matchPctFor as sharedMatchPct, haveFor as sharedHaveFor } from '@/lib/match'
 
 // --- Types for fetched data ---
 interface Major {
@@ -50,6 +58,7 @@ interface Skill {
 interface ProfileResponse {
   major: Major | null
   skills: Skill[]
+  first_name?: string
 }
 interface JobPosting {
   id: number
@@ -58,6 +67,19 @@ interface JobPosting {
   location: string
   skills: Skill[]
   job_field: string
+  source?: string      // e.g. "LinkedIn" for live jobs, empty for older scraped ones
+  url?: string         // original posting
+  date_posted?: string | null
+}
+
+// "today", "3 days ago", "2 weeks ago" from an ISO date
+const postedAgo = (iso?: string | null) => {
+  if (!iso) return ''
+  const days = Math.floor((Date.now() - new Date(iso + 'T00:00:00').getTime()) / 86400000)
+  if (days <= 0) return 'today'
+  if (days === 1) return 'yesterday'
+  if (days < 14) return `${days} days ago`
+  return `${Math.floor(days / 7)} weeks ago`
 }
 interface MissingResponse {
   missing_skills: Skill[]
@@ -81,6 +103,7 @@ interface SkillCardProps {
   skills: Skill[]
   onAdd: (skill: Skill) => void
   userSkills: Skill[]        // ← new prop
+  color: string
 }
 
 interface MajorSkillsResponse {
@@ -91,44 +114,58 @@ interface MajorSkillsResponse {
   soft_skills: Skill[]
 }
 
+type Tab = 'overview' | 'skills' | 'jobs'
+
+// One line per category: filled station = already on your profile.
 const SkillCard: React.FC<SkillCardProps> = ({
   title,
   skills,
   onAdd,
   userSkills,
-}) => (
-  <Card className="rounded-2xl shadow p-4">
-    <CardHeader>
-      <CardTitle>{title}</CardTitle>
-    </CardHeader>
-    <CardContent className="space-y-2">
+  color,
+}) => {
+  const owned = (s: Skill) => userSkills.some(u => u.id === s.id)
+  return (
+    <Card className="p-5">
+      <div className="mb-2.5 flex items-baseline justify-between">
+        <h3 className="text-lg font-bold">{title}</h3>
+        <span className="eyebrow">{skills.filter(owned).length}/{skills.length}</span>
+      </div>
       {skills.length > 0 ? (
-        skills.map(s => (
-          <div key={s.id} className="flex justify-between items-center">
-            <span>{s.name}</span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onAdd(s)}
-              // use the new prop here instead of userSkills
-              disabled={userSkills.some(u => u.id === s.id)}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        ))
+        <div className="-mr-2 max-h-[560px] overflow-y-auto pr-2">
+        <ul className="stations" style={{ '--c': color } as React.CSSProperties}>
+          {skills.map(s => (
+            <li key={s.id} className={owned(s) ? 'on' : ''}>
+              <span className="s" />
+              <span className="min-w-0 text-sm font-medium">{s.name}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onAdd(s)}
+                // use the new prop here instead of userSkills
+                disabled={owned(s)}
+                aria-label={owned(s) ? `${s.name} added` : `Add ${s.name}`}
+              >
+                {owned(s) ? <Check /> : <Plus />}
+              </Button>
+            </li>
+          ))}
+        </ul>
+        </div>
       ) : (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-ink-3">
           No skills in this category
         </p>
       )}
-    </CardContent>
-  </Card>
-)
+    </Card>
+  )
+}
 
 const StudentDashboard: React.FC = () => {
   const navigate = useNavigate()
-  
+  const [tab, setTab] = useState<Tab>('overview')
+  const [firstName, setFirstName] = useState('')
+
   // Profile + major
   const [majors, setMajors] = useState<Major[]>([])
   const [selectedMajorId, setSelectedMajorId] = useState<number | "">("")
@@ -150,7 +187,7 @@ const StudentDashboard: React.FC = () => {
   const [loadingJobs, setLoadingJobs] = useState(false)
   const [loadingMissing, setLoadingMissing] = useState(false)
 
-  
+
   // --- 1) On mount: fetch profile, majors, jobFields ---
   useEffect(() => {
     apiFetch('/profile/')
@@ -159,6 +196,7 @@ const StudentDashboard: React.FC = () => {
           setSelectedMajorId(data.major.id)
         }
         setUserSkills(data.skills)
+        setFirstName(data.first_name || '')
       })
       .catch(() => {
         localStorage.removeItem('apiToken')
@@ -250,17 +288,6 @@ const StudentDashboard: React.FC = () => {
     }
   }
 
-  // flatten every word from your skills into a Set for quick lookup
-  const userTokenSet = new Set<string>(
-    userSkills
-      .flatMap(us =>
-        us.name
-          .toLowerCase()
-          .split(/\W+/)       // split on non-word
-          .filter(Boolean)
-      )
-  );
-
 
   // --- 4c) Remove skill ---
   const removeSkill = (skill: Skill) => {
@@ -294,526 +321,498 @@ const StudentDashboard: React.FC = () => {
       .finally(() => setLoadingMissing(false))
   }
 
-  // --- Helpers for match % ---
-  const getMatchingSkills = (): Skill[] => {
-    if (!selectedJob) return [];
+  // --- Helpers for match % (shared with the profile page, see lib/match.ts) ---
+  const matchPctFor = (job: JobPosting) => sharedMatchPct(job, userSkills)
+  // job-skills you have / still need (word overlap with your skills)
+  const haveFor = (job: JobPosting) => sharedHaveFor(job, userSkills)
 
-    // 1) Build a Set of every “word” token from the job’s skill names
-    const jobTokens = new Set<string>();
-    selectedJob.skills.forEach((s) => {
-      s.name
-        .toLowerCase()
-        .split(/\W+/)       // split on non-word chars (spaces, punctuation)
-        .filter(Boolean)    // drop empty strings
-        .forEach(tok => jobTokens.add(tok));
-    });
-
-    console.log("▶️ JOB TOKENS:", Array.from(jobTokens));
-
-    // 2) Keep only user‐skills that share at least one token
-    return userSkills.filter((us) => {
-      const userTokens = us.name
-        .toLowerCase()
-        .split(/\W+/)
-        .filter(Boolean);
-
-      const matched = userTokens.some(tok => jobTokens.has(tok));
-      if (matched) console.log(`✅ MATCHED:`, us.name, "via tokens", userTokens);
-      return matched;
-    });
-  };
-
- // these are the actual job‐skill objects…
-  const haveSkills = selectedJob
-    ? selectedJob.skills.filter(js => {
-        const tokens = js.name
-          .toLowerCase()
-          .split(/\W+/)
-          .filter(Boolean);
-        return tokens.some(tok => userTokenSet.has(tok));
-      })
-    : [];
+  // these are the actual job‐skill objects…
+  const haveSkills = selectedJob ? haveFor(selectedJob) : [];
 
   // and anything _not_ in haveSkills is truly missing:
   const needSkills = selectedJob
-    ? selectedJob.skills.filter(js => 
+    ? selectedJob.skills.filter(js =>
         !haveSkills.includes(js)
       )
     : [];
 
-  //const getMatchingSkills = () => {
-   // if (!selectedJob) return [] as Skill[]
-   // const ids = new Set(selectedJob.skills.map(s=>s.id))
-   // return userSkills.filter(s => ids.has(s.id))
-  //}
-
-  //const getMissingLocal = (): Skill[] => {
-    //if (!selectedJob) return []
-    //const haveNames = userSkills.map(s => s.name.toLowerCase())
-    //return selectedJob.skills.filter(js => {
-      //const j = js.name.toLowerCase()
-      // consider “have” if any your skill overlaps textually
-      //const matched = haveNames.some(hn => hn.includes(j) || j.includes(hn))
-      //return !matched
-   // })
-  //}
-  //const getMissingLocal = () => {
-    //if (!selectedJob) return [] as Skill[]
-    //const ids = new Set(userSkills.map(s=>s.id))
-    //return selectedJob.skills.filter(s => !ids.has(s.id))
-  //}
-  const getMatchPct = () => {
-    if (!selectedJob) return 0
-    const total = selectedJob.skills.length
-    if (!total) return 0
-    const matched = getMatchingSkills().length
-    return Math.round((matched / total) * 100)
-  }
+  const getMatchPct = () => (selectedJob ? matchPctFor(selectedJob) : 0)
 
   // --- Loading skeleton ---
   if (loadingProfile || loadingMajors || loadingJobFields) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#2b0000]">
-        <p className="text-white">Loading dashboard…</p>
+      <div className="flex min-h-screen items-center justify-center" aria-busy="true">
+        <p className="flex items-center gap-3 font-display text-xl text-ink-2">
+          <TrainFront className="h-5 w-5 text-line-red" /> Loading dashboard…
+        </p>
       </div>
     )
   }
 
+  // --- Overview numbers, all derived from data already loaded above ---
+  const majorName = majors.find(m => m.id === selectedMajorId)?.name
+  const ranked = jobs.map(j => ({ job: j, pct: matchPctFor(j) })).sort((a, b) => b.pct - a.pct)
+  const best = ranked[0]
+  const gapCounts = new Map<string, number>()
+  jobs.forEach(j => {
+    const have = haveFor(j)
+    j.skills.filter(s => !have.includes(s)).forEach(s => gapCounts.set(s.name, (gapCounts.get(s.name) || 0) + 1))
+  })
+  const gaps = [...gapCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const coverage = majorSkills
+    ? ([
+        ['Major-Related', majorSkills.major_related_skills],
+        ['Technical', majorSkills.technical_skills],
+        ['Soft', majorSkills.soft_skills],
+      ] as const).map(([label, list]) => {
+        const n = list.filter(s => userSkills.some(u => u.id === s.id)).length
+        const pct = list.length ? (n / list.length) * 100 : 0
+        return { label, pct, value: `${n} / ${list.length}`, tip: `${label}: you have ${n} of ${list.length} skills (${Math.round(pct)}%)`, n }
+      })
+    : []
+
+  const tabs: Array<[Tab, string, React.ReactNode]> = [
+    ['overview', 'Overview', <LayoutDashboard key="o" />],
+    ['skills', 'My Skills', <CircleDot key="s" />],
+    ['jobs', 'Explore Jobs', <Route key="j" />],
+  ]
+  const ti = tabs.findIndex(t => t[0] === tab)
+  const panelHead = (title: string, desc: React.ReactNode, action?: React.ReactNode, icon?: React.ReactNode, color?: string) => (
+    <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 pb-4">
+      <div className="flex items-start gap-3">
+        {icon && <span className="bullet h-[30px] w-[30px] [&_svg]:h-4 [&_svg]:w-4" style={{ '--c': color } as React.CSSProperties}>{icon}</span>}
+        <div>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription className="mt-1">{desc}</CardDescription>
+        </div>
+      </div>
+      {action}
+    </CardHeader>
+  )
+  const goExplore = (
+    <Button variant="outline" size="sm" onClick={() => setTab('jobs')}>
+      Explore <ArrowRight />
+    </Button>
+  )
+
   // --- Render everything ---
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#2b0000] via-[#550000] to-[#2b0000]">
+    <div className="min-h-screen pb-16">
       {/* Header */}
-      <header className="bg-gradient-to-r from-[#550000]/80 to-[#2b0000]/80 backdrop-blur-sm border-b border-black/30">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-red-600 rounded-lg">
-              <GraduationCap className="h-8 w-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-white">Student Dashboard</h1>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Button
-              variant="outline"
-              className="bg-transparent border-white text-white hover:bg-white/20"
-              onClick={() => navigate('/profile')}
-            >
-              <User className="h-4 w-4 mr-1"/>Profile
-            </Button>
-            <Button
-              variant="outline"
-              className="bg-transparent border-white text-white hover:bg-white/20"
-              onClick={() => {
-                localStorage.removeItem('apiToken')
-                navigate('/')
-              }}
-            >
-              Logout
-            </Button>
-          </div>
+      <AppHeader subtitle="Student dashboard">
+        <Button variant="outline" onClick={() => navigate('/profile')}>
+          <User /><span className="hidden sm:inline">Profile</span>
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            localStorage.removeItem('apiToken')
+            navigate('/')
+          }}
+        >
+          <LogOut /><span className="hidden sm:inline">Logout</span>
+        </Button>
+      </AppHeader>
+
+      <main className="mx-auto max-w-7xl px-4 sm:px-8">
+        <div className="pb-2 pt-7">
+          <p className="eyebrow mb-1.5">{majorName ? `Your line · ${majorName}` : 'No major selected yet'}</p>
+          <h1 className="text-[clamp(34px,4.2vw,54px)] font-extrabold leading-tight tracking-[-0.025em]">Student Dashboard</h1>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        {/* Major Selection */}
-        <Card className="bg-gradient-to-br from-[#2b0000]/60 via-[#550000]/60 to-[#2b0000]/60 border-black/40 shadow-lg">
-          <CardHeader>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-red-600 rounded-lg">
-                <BookOpen className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl text-white">Select Your Major</CardTitle>
-                <CardDescription className="text-gray-300">
-                  Choose your field of study to get started
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Select
-              value={selectedMajorId.toString()}
-              onValueChange={val => {
-                const n = parseInt(val,10)
-                setSelectedMajorId(isNaN(n) ? "" : n)
-              }}
-            >
-              <SelectTrigger className="bg-[#300000] border-gray-600 text-white">
-                <SelectValue placeholder="Pick a major…" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#300000] border-gray-600">
-                {majors.map(m => (
-                  <SelectItem
-                    key={m.id}
-                    value={m.id.toString()}
-                    className="text-white hover:bg-red-600"
-                  >
-                    {m.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
+        {/* Section tabs drawn as stations on your line */}
+        <div className="tabline mb-7 mt-4" role="tablist" aria-label="Dashboard sections">
+          <span className="prog" style={{ width: `calc(${ti / (tabs.length - 1)} * (100% - 36px))` }} />
+          {tabs.map(([key, label, icon], i) => (
+            <button key={key} role="tab" aria-selected={tab === key} className={`tab ${i < ti ? 'passed' : ''}`} onClick={() => setTab(key)}>
+              <span className="st">{icon}</span>
+              <span className="font-display text-[19px]">{label}</span>
+            </button>
+          ))}
+        </div>
 
-        {/* Skills management */}
-        {selectedMajorId && (
-          <div className="grid grid-cols-12 gap-6">
-            {/* Major Skills */}
-            <Card className="col-span-12 md:col-span-8 bg-gradient-to-br from-[#2b0000]/50 via-[#550000]/50 to-[#2b0000]/50 border-black/30 shadow-lg">
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-red-600 rounded-lg">
-                    <Target className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl text-white">Skills</CardTitle>
-                    <CardDescription className="text-gray-300">
-                      Baseline skills for your major
-                    </CardDescription>
+        {/* ================= OVERVIEW ================= */}
+        {tab === 'overview' && (
+          <div className="fade grid grid-cols-12 gap-5" role="tabpanel">
+            {jobs.length > 0 && (
+              <div className="board col-span-12 rounded-sm" aria-label={`Now hiring in ${selectedJobField}`}>
+                <span className="flex shrink-0 items-center gap-2 bg-primary px-4 font-mono text-[11px] uppercase tracking-[0.12em] text-primary-foreground">
+                  <TrainFront className="h-[15px] w-[15px]" />Now hiring
+                </span>
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <div className="tk">
+                    {[...jobs, ...jobs].map((j, i) => (
+                      <span key={i}>{j.title}<i>{j.company_name}{j.location ? ` · ${j.location}` : ''}</i></span>
+                    ))}
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {majorSkills && (
-                  <div className="grid md:grid-cols-3 gap-6">
-                    {/* Major-Related */}
-                    <SkillCard
-                      title="Major-Related Skills"
-                      skills={majorSkills.major_related_skills}
-                      onAdd={addSkillFromMajor} userSkills={userSkills}                    />
+              </div>
+            )}
 
-                    {/* Technical */}
-                    <SkillCard
-                      title="Technical Skills"
-                      skills={majorSkills.technical_skills}
-                      onAdd={addSkillFromMajor} userSkills={userSkills}                    />
-
-                    {/* Soft */}
-                    <SkillCard
-                      title="Soft Skills"
-                      skills={majorSkills.soft_skills}
-                      onAdd={addSkillFromMajor} userSkills={userSkills}                    />
+            <Card className="col-span-12 grid items-center gap-8 p-5 sm:p-6 lg:grid-cols-[.9fr_1.1fr] lg:gap-12">
+              <div>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="mb-1.5 text-[30px] font-extrabold leading-tight">Welcome back{firstName ? `, ${firstName}` : ''}</h2>
+                    <p className="text-ink-2">
+                      {userSkills.length === 0
+                        ? 'Your line is empty. Pick your major and add the skills you already have.'
+                        : selectedJobField
+                          ? <>Here's where your skills take you in <b>{selectedJobField}</b> right now.</>
+                          : 'Pick a job field in Explore Jobs to see where your skills take you.'}
+                    </p>
                   </div>
-                )}
-                {majorSkills && majorSkills.major_related_skills.length === 0 && (
-                  <p className="text-gray-400">No skills found for this major.</p>
-                )}
+                  {best && userSkills.length > 0 && <MatchDial value={best.pct} />}
+                </div>
+                <dl className="mt-5 grid overflow-hidden rounded-sm border sm:grid-cols-3">
+                  {[
+                    ['Skills on profile', String(userSkills.length), userSkills.length ? 'across your profile' : 'Add your first skill'],
+                    ['Best match', best ? `${best.pct}%` : '–', best ? best.job.title : 'Pick a job field'],
+                    ['Strong matches', best ? `${ranked.filter(r => r.pct >= 60).length} / ${ranked.length}` : '–', 'jobs at 60% or more'],
+                  ].map(([k, v, d]) => (
+                    <div key={k} className="min-w-0 border-b p-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
+                      <dt className="eyebrow">{k}</dt>
+                      <dd className="mt-1.5 font-display text-[40px] font-extrabold leading-none tabular-nums">{v}</dd>
+                      <dd className="mt-1 truncate text-[13px] text-ink-2" title={d}>{d}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+              <div>
+                <h2 className="text-[23px] font-bold">Major coverage</h2>
+                <p className="mb-3 text-sm text-ink-2">Share of your major's skills you already have</p>
+                {coverage.length && coverage.some(c => c.n > 0)
+                  ? <BarList rows={coverage} color="hsl(var(--line-red))" />
+                  : <EmptyNote icon={<CircleDashed />}>No data yet. Add skills in <b>My Skills</b> to see how much of your major you cover.</EmptyNote>}
+              </div>
+            </Card>
+
+            <Card className="col-span-12 lg:col-span-7">
+              {panelHead('Match across jobs', selectedJobField ? `${selectedJobField} · % of each job's skills you have` : 'Pick a job field to compare jobs', goExplore)}
+              <CardContent>
+                {loadingJobs ? <p className="text-ink-2">Loading jobs…</p>
+                  : ranked.length && userSkills.length
+                    ? <BarList thin color="hsl(var(--line-red))" rows={ranked.map(r => ({ label: r.job.title, pct: r.pct, value: `${r.pct}%`, tip: `${r.job.title} · ${r.job.company_name}: ${r.pct}% match` }))} />
+                    : <EmptyNote icon={<CircleDashed />}>No data yet. {selectedJobField ? 'Your match scores appear once you add skills.' : 'Choose a job field in Explore Jobs.'}</EmptyNote>}
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-12 lg:col-span-5">
+              {panelHead('Skills to pick up next', selectedJobField ? `How many ${selectedJobField} jobs ask for each skill you don't have` : 'Pick a job field to see your gaps')}
+              <CardContent>
+                {gaps.length
+                  ? <BarList color="hsl(var(--line-amber))" rows={gaps.map(([name, n]) => ({ label: name, pct: (n / jobs.length) * 100, value: `${n} job${n > 1 ? 's' : ''}`, tip: `${name}: asked for by ${n} of ${jobs.length} jobs` }))} />
+                  : <EmptyNote icon={jobs.length ? <CircleCheck /> : <CircleDashed />}>{jobs.length ? 'You cover every skill these jobs ask for.' : 'No data yet.'}</EmptyNote>}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* ================= MY SKILLS ================= */}
+        {tab === 'skills' && (
+          <div className="fade grid grid-cols-12 gap-5" role="tabpanel">
+            {/* Major Selection */}
+            <Card className="col-span-12 lg:col-span-8">
+              {panelHead('Select Your Major', 'Choose your field of study to get started', undefined, <GraduationCap />)}
+              <CardContent>
+                <Select
+                  value={selectedMajorId.toString()}
+                  onValueChange={val => {
+                    const n = parseInt(val,10)
+                    setSelectedMajorId(isNaN(n) ? "" : n)
+                  }}
+                >
+                  <SelectTrigger aria-label="Major">
+                    <SelectValue placeholder="Pick a major…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {majors.map(m => (
+                      <SelectItem key={m.id} value={m.id.toString()}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </CardContent>
             </Card>
 
             {/* Additional Skills */}
-            <Card className="col-span-12 md:col-span-4 bg-gradient-to-br from-[#2b0000]/50 via-[#550000]/50 to-[#2b0000]/50 border-black/30 shadow-lg">
-              <CardHeader>
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-red-600 rounded-lg">
-                    <Plus className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl text-white">Additional Skills</CardTitle>
-                    <CardDescription className="text-gray-300">
-                      Add any other skills
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
+            <Card className="col-span-12 lg:col-span-4">
+              {panelHead('Additional Skills', 'Add any other skills', undefined, <Plus />, 'hsl(var(--ink))')}
               <CardContent>
-                <div className="flex space-x-2">
+                <div className="flex gap-2">
                   <Input
+                    aria-label="Skill name"
                     placeholder="Skill name…"
                     value={customSkill}
                     onChange={e => setCustomSkill(e.target.value)}
-                    className="bg-[#300000] border-gray-600 text-white"
                     onKeyPress={e => e.key==='Enter' && addCustomSkill()}
                   />
-                  <Button
-                    onClick={addCustomSkill}
-                    className="bg-red-600 hover:bg-black text-white"
-                  >
-                    <Plus className="h-4 w-4" />
+                  <Button size="icon" onClick={addCustomSkill} aria-label="Add skill">
+                    <Plus />
                   </Button>
                 </div>
-                <p className="mt-2 text-gray-500 text-sm">
+                <p className="mt-2 text-[13px] text-ink-3">
                   * New skills will be created automatically.
                 </p>
+              </CardContent>
+            </Card>
+
+            {/* Skills management */}
+            {selectedMajorId ? (
+              majorSkills && (
+                <>
+                  <div className="col-span-12 md:col-span-4">
+                    <SkillCard title="Major-Related" skills={majorSkills.major_related_skills} onAdd={addSkillFromMajor} userSkills={userSkills} color="hsl(var(--line-red))" />
+                  </div>
+                  <div className="col-span-12 md:col-span-4">
+                    <SkillCard title="Technical" skills={majorSkills.technical_skills} onAdd={addSkillFromMajor} userSkills={userSkills} color="hsl(var(--line-teal))" />
+                  </div>
+                  <div className="col-span-12 md:col-span-4">
+                    <SkillCard title="Soft" skills={majorSkills.soft_skills} onAdd={addSkillFromMajor} userSkills={userSkills} color="hsl(var(--line-amber))" />
+                  </div>
+                  {majorSkills.major_related_skills.length === 0 && (
+                    <p className="col-span-12 text-ink-3">No skills found for this major.</p>
+                  )}
+                </>
+              )
+            ) : (
+              <div className="col-span-12">
+                <EmptyNote icon={<GraduationCap />}>Pick a major above to see its baseline skills.</EmptyNote>
+              </div>
+            )}
+
+            {/* Your Skills */}
+            <Card className="col-span-12">
+              {panelHead('Your Skills', `${userSkills.length} skill${userSkills.length === 1 ? '' : 's'} you've added`)}
+              <CardContent>
+                {userSkills.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {userSkills.map(s => (
+                      <span key={s.id} className="chip chip--mine">
+                        {s.name}
+                        <button onClick={()=>removeSkill(s)} aria-label={`Remove ${s.name}`}>
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyNote icon={<CircleDashed />}>No skills yet. Add them from the lists above.</EmptyNote>
+                )}
               </CardContent>
             </Card>
           </div>
         )}
 
-        {/* Your Skills */}
-        {userSkills.length>0 && (
-          <Card className="bg-gradient-to-br from-[#2b0000]/50 via-[#550000]/50 to-[#2b0000]/50 border-black/30 shadow-lg">
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-red-600 rounded-lg">
-                  <Award className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <CardTitle className="text-xl text-white">Your Skills</CardTitle>
-                  <CardDescription className="text-gray-300">
-                    Skills you’ve added
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {userSkills.map(s => (
-                  <Badge
-                    key={s.id}
-                    className="bg-red-600 text-white border-transparent"
-                  >
-                    {s.name}
-                    <button
-                      onClick={()=>removeSkill(s)}
-                      className="ml-2 text-white hover:text-black"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Job Fields */}
-        {jobFields.length>0 && (
-          <Card className="bg-gradient-to-br from-[#2b0000]/50 via-[#550000]/50 to-[#2b0000]/50 border-black/30 shadow-lg">
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-red-600 rounded-lg">
-                  <Briefcase className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <CardTitle className="text-xl text-white">Job Fields</CardTitle>
-                  <CardDescription className="text-gray-300">
-                    Industries & roles
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Select
-                value={selectedJobField}
-                onValueChange={val => {
-                  setSelectedJobField(val)
-                  setSelectedJob(null)
-                  setMissingData(null)
-                }}
-              >
-                <SelectTrigger className="bg-[#300000] border-gray-600 text-white">
-                  <SelectValue placeholder="Pick a job field…"/>
-                </SelectTrigger>
-                <SelectContent className="bg-[#300000] border-gray-600">
-                  {jobFields.map(f=>(
-                    <SelectItem
-                      key={f.id}
-                      value={f.name}
-                      className="text-white hover:bg-red-600"
-                    >
-                      {f.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Jobs */}
-        {selectedJobField && (
-          <Card className="bg-gradient-to-br from-[#2b0000]/50 via-[#550000]/50 to-[#2b0000]/50 border-black/30 shadow-lg">
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-red-600 rounded-lg">
-                  <Target className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <CardTitle className="text-xl text-white">
-                    Jobs in {selectedJobField}
-                  </CardTitle>
-                  <CardDescription className="text-gray-300">
-                    Click to analyze match
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent>
-              {loadingJobs ? (
-                <p className="text-gray-300">Loading jobs…</p>
-              ) : jobs.length === 0 ? (
-                <p className="text-gray-300">No jobs found.</p>
-              ) : (
-                <div className="space-y-4">
-                  {jobs.map((job) => {
-                    // build a Set of all your skill‐names (lowercased & trimmed)
-                    const mySkills = new Set(
-                      userSkills.map((u) => u.name.toLowerCase().trim())
-                    );
-
-                    return (
-                      <div
-                        key={job.id}
-                        onClick={() => handleJobSelect(job)}
-                        className="cursor-pointer p-4 bg-[#300000] rounded-lg border border-black/20 hover:border-red-600"
-                      >
-                        <h3 className="text-lg font-semibold text-white">
-                          {job.title}
-                        </h3>
-                        <p className="text-gray-300">{job.company_name}</p>
-
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {(job.skills || []).map((sk) => {
-                            // split the job‐skill into words/tokens
-                            const tokens = sk.name
-                              .toLowerCase()
-                              .split(/\W+/)
-                              .filter(Boolean);
-
-                            // check if any token is one of your skills
-                            const isMatch = tokens.some((t) => mySkills.has(t));
-
-                            return (
-                              <Badge
-                                key={sk.id}
-                                className={`px-3 py-1 ${
-                                  isMatch
-                                    ? "bg-green-500 text-white"
-                                    : "bg-red-600 text-white"
-                                }`}
-                              >
-                                {sk.name}
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-
-
-        {/* Job Analysis */}
-        {selectedJob && (
-          <Card className="bg-gradient-to-br from-[#2b0000]/50 via-[#550000]/50 to-[#2b0000]/50 border-black/30 shadow-lg">
-            <CardHeader>
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-red-600 rounded-lg">
-                  <Trophy className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <CardTitle className="text-xl text-white">
-                    Analysis: {selectedJob.title}
-                  </CardTitle>
-                  <CardDescription className="text-gray-300">
-                    Skill match breakdown
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Match % */}
-              <div>
-                <div className="flex justify-between">
-                  <span className="text-white font-medium">Match</span>
-                  <span className="text-white font-bold">{getMatchPct()}%</span>
-                </div>
-                <Progress
-                  value={getMatchPct()}
-                  className="h-3 bg-[#300000] mt-1"
-                />
-              </div>
-              {/* ✓ You have */}
-              {haveSkills.length > 0 && (
-                <div>
-                  <h4 className="text-green-400 font-semibold mb-2">✓ You have:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {haveSkills.map(s => (
-                      <Badge key={s.id} className="bg-green-500 text-white">
-                        {s.name}
-                      </Badge>
+        {/* ================= EXPLORE JOBS ================= */}
+        {tab === 'jobs' && (
+          <div className="fade grid grid-cols-12 items-start gap-5" role="tabpanel">
+            {/* Job Fields */}
+            <Card className="col-span-12">
+              {panelHead('Job Fields', 'Industries & roles', undefined, <Briefcase />, 'hsl(var(--line-teal))')}
+              <CardContent>
+                <Select
+                  value={selectedJobField}
+                  onValueChange={val => {
+                    setSelectedJobField(val)
+                    setSelectedJob(null)
+                    setMissingData(null)
+                  }}
+                >
+                  <SelectTrigger aria-label="Job field">
+                    <SelectValue placeholder="Pick a job field…"/>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jobFields.map(f=>(
+                      <SelectItem key={f.id} value={f.name}>
+                        {f.name}
+                      </SelectItem>
                     ))}
-                  </div>
-                </div>
-              )}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
 
-              {/* ✗ You need */}
-              {needSkills.length > 0 ? (
-                <div>
-                  <h4 className="text-red-400 font-semibold mb-2">✗ You need:</h4>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {needSkills.map(s => (
-                      <Badge key={s.id} className="bg-red-600 text-white">
-                        {s.name}
-                      </Badge>
-                    ))}
-                  </div>
+            {/* Jobs */}
+            <Card className="col-span-12 lg:col-span-7">
+              {panelHead(selectedJobField ? `Jobs in ${selectedJobField}` : 'Jobs', 'Click to analyze match',
+                <span className="flex gap-4 text-[13px] text-ink-2">
+                  <span className="flex items-center gap-1.5"><span className="h-[11px] w-[11px] rounded-full border-2 border-good bg-good" />You have</span>
+                  <span className="flex items-center gap-1.5"><span className="h-[11px] w-[11px] rounded-full border-2 border-line-amber" />You need</span>
+                </span>)}
+              <CardContent>
+                {!selectedJobField ? (
+                  <EmptyNote icon={<Briefcase />}>Pick a job field above to see open jobs.</EmptyNote>
+                ) : loadingJobs ? (
+                  <p className="text-ink-2">Loading jobs…</p>
+                ) : jobs.length === 0 ? (
+                  <EmptyNote icon={<CircleDashed />}>No jobs found.</EmptyNote>
+                ) : (
+                  <div className="grid gap-2.5">
+                    {jobs.map((job) => {
+                      // build a Set of all your skill‐names (lowercased & trimmed)
+                      const mySkills = new Set(
+                        userSkills.map((u) => u.name.toLowerCase().trim())
+                      );
+                      const pct = matchPctFor(job)
 
-                  {loadingMissing ? (
-                    <p className="text-gray-300">Loading suggestions…</p>
-                  ) : missingData ? (
-                    <div className="space-y-4">
-                      {Object.entries(missingData.suggestions)
-                        // only show suggestions for truly missing skills
-                        .filter(([skillName]) =>
-                          needSkills.some(ms => ms.name === skillName)
-                        )
-                        .map(([skillName, recs]) => (
-                          <div key={skillName}>
-                            <p className="text-gray-300 mb-2">For {skillName}:</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {recs.map(cert => (
-                                <Card
-                                  key={cert.id}
-                                  className="bg-red-800/50 border-red-400/30 hover:shadow-xl transition-shadow"
-                                >
-                                  <CardHeader>
-                                    <CardTitle className="text-lg text-white">
-                                      {cert.name}
-                                    </CardTitle>
-                                    <CardDescription className="text-sm text-red-200">
-                                      {cert.provider}
-                                    </CardDescription>
-                                  </CardHeader>
-                                  <CardContent className="flex flex-col justify-between">
-                                    <p className="text-red-100 text-sm mb-4">
-                                      Relevance: {Math.round(cert.relevance_score * 100)}%
-                                    </p>
-                                    <Button
-                                      size="sm"
-                                      className="mt-auto bg-red-500 hover:bg-red-600 text-white"
-                                      onClick={() => window.open(cert.url, '_blank')}
-                                    >
-                                      View Course
-                                    </Button>
-                                  </CardContent>
-                                </Card>
-                              ))}
+                      return (
+                        <button
+                          key={job.id}
+                          onClick={() => handleJobSelect(job)}
+                          aria-pressed={selectedJob?.id === job.id}
+                          className="grid w-full gap-2.5 rounded-sm border bg-card p-4 text-left transition-colors hover:border-ink-3 aria-pressed:border-line-red aria-pressed:shadow-[inset_4px_0_0_hsl(var(--line-red))]"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <h3 className="text-[19px] font-bold leading-snug">{job.title}</h3>
+                              <p className="text-sm text-ink-2">{job.company_name}{job.location ? ` · ${job.location}` : ''}</p>
+                              {job.source && (
+                                <p className="eyebrow mt-1 text-[11px]">
+                                  via {job.source}{job.date_posted ? ` · ${postedAgo(job.date_posted)}` : ''}
+                                </p>
+                              )}
                             </div>
+                            <span className={`shrink-0 rounded-sm px-2.5 py-1 text-[13px] font-semibold tabular-nums ${pct >= 60 ? 'bg-good-soft text-good' : 'border bg-surface-2'}`}>
+                              {pct}% match
+                            </span>
                           </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            {(job.skills || []).map((sk) => {
+                              // split the job‐skill into words/tokens
+                              const tokens = sk.name
+                                .toLowerCase()
+                                .split(/\W+/)
+                                .filter(Boolean);
+
+                              // check if any token is one of your skills
+                              const isMatch = tokens.some((t) => mySkills.has(t));
+
+                              return (
+                                <span key={sk.id} className={`chip ${isMatch ? 'chip--have' : 'chip--need'}`}>
+                                  {sk.name}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Job Analysis */}
+            <Card className="col-span-12 p-5 sm:p-6 lg:sticky lg:top-24 lg:col-span-5">
+              {!selectedJob ? (
+                <EmptyNote icon={<MousePointerClick />}>Pick a job to see how your skills line up.</EmptyNote>
+              ) : (
+                <div>
+                  <p className="eyebrow">Analysis</p>
+                  <h2 className="mt-0.5 text-2xl font-extrabold">{selectedJob.title}</h2>
+                  <p className="text-ink-2">
+                    {selectedJob.company_name}{selectedJob.source ? ` · via ${selectedJob.source}` : ''}
+                    {selectedJob.date_posted ? ` · ${postedAgo(selectedJob.date_posted)}` : ''}
+                  </p>
+                  {selectedJob.url && (
+                    <a
+                      href={selectedJob.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`${buttonVariants({ size: 'sm' })} mt-3`}
+                    >
+                      Apply on {selectedJob.source || 'the job site'} <ArrowUpRight />
+                    </a>
+                  )}
+                  <p className="mb-5 mt-4 text-ink-2">Skill match breakdown</p>
+
+                  {/* Match % */}
+                  <div className="grid gap-2">
+                    <div className="flex items-baseline justify-between">
+                      <span className="font-semibold">Match</span>
+                      <span className="font-display text-[44px] font-extrabold leading-none tabular-nums">{getMatchPct()}%</span>
+                    </div>
+                    <BarList
+                      color={getMatchPct() >= 60 ? 'hsl(var(--good))' : 'hsl(var(--line-red))'}
+                      rows={[{ label: 'Skill match', pct: getMatchPct(), value: '', tip: `Match ${getMatchPct()}%` }]}
+                    />
+                  </div>
+
+                  {/* ✓ You have */}
+                  {haveSkills.length > 0 && (
+                    <div>
+                      <h4 className="mb-2.5 mt-5 flex items-center gap-2 text-sm font-semibold"><CircleCheck className="h-4 w-4 text-good" />You have</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {haveSkills.map(s => (
+                          <span key={s.id} className="chip chip--have">{s.name}</span>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ✗ You need */}
+                  {needSkills.length > 0 ? (
+                    <div>
+                      <h4 className="mb-2.5 mt-5 flex items-center gap-2 text-sm font-semibold"><CircleDashed className="h-4 w-4 text-amber-ink" />You need</h4>
+                      <div className="mb-4 flex flex-wrap gap-2">
+                        {needSkills.map(s => (
+                          <span key={s.id} className="chip chip--need">{s.name}</span>
+                        ))}
+                      </div>
+
+                      <h4 className="mb-2.5 mt-5 flex items-center gap-2 text-sm font-semibold"><BookOpen className="h-4 w-4" />Courses for what you need</h4>
+                      {loadingMissing ? (
+                        <p className="text-ink-2">Loading suggestions…</p>
+                      ) : missingData ? (
+                        <div className="grid gap-3">
+                          {Object.entries(missingData.suggestions)
+                            // only show suggestions for truly missing skills
+                            .filter(([skillName]) =>
+                              needSkills.some(ms => ms.name === skillName)
+                            )
+                            .map(([skillName, recs]) =>
+                              recs.map(cert => (
+                                <div key={`${skillName}-${cert.id}`} className="grid min-w-0 gap-2 rounded-sm border p-3.5">
+                                  <span className="eyebrow text-amber-ink">For {skillName}</span>
+                                  <h3 className="text-[17px] font-bold leading-snug">{cert.name}</h3>
+                                  <div className="flex items-center justify-between gap-2 text-[13px] text-ink-2">
+                                    <span>{cert.provider}</span>
+                                    <span className="rounded-sm border bg-surface-2 px-2 py-0.5 font-semibold">
+                                      Relevance: {Math.round(cert.relevance_score * 100)}%
+                                    </span>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="justify-self-start"
+                                    onClick={() => window.open(cert.url, '_blank')}
+                                  >
+                                    View Course <ArrowUpRight />
+                                  </Button>
+                                </div>
+                              ))
+                            )}
+                        </div>
+                      ) : (
+                        <p className="text-ink-2">No recs found.</p>
+                      )}
                     </div>
                   ) : (
-                    <p className="text-gray-300">No recs found.</p>
+                    <div className="mt-5 flex items-center gap-3.5 rounded-sm bg-good-soft p-4">
+                      <Trophy className="h-8 w-8 shrink-0 text-good" />
+                      <div>
+                        <h3 className="text-lg font-bold">Perfect Match!</h3>
+                        <p className="text-ink-2">You have all required skills.</p>
+                      </div>
+                    </div>
                   )}
                 </div>
-              ) : (
-                <div className="text-center p-6 bg-green-800/30 rounded-lg">
-                  <Trophy className="mx-auto h-16 w-16 text-green-400 mb-4" />
-                  <h3 className="text-xl font-bold text-green-400">🎉 Perfect Match!</h3>
-                  <p className="text-green-200">You have all required skills.</p>
-                </div>
               )}
-
-            </CardContent>
-          </Card>
+            </Card>
+          </div>
         )}
       </main>
     </div>

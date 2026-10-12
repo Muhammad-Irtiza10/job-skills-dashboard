@@ -1,0 +1,29 @@
+﻿# Extra packages for the old scraping / NLP management commands (fetch_linkedin_jobs,
+# scrape_all_majors, nlp.py ...). Not needed by the website itself; see requirements.txt.
+fastapi
+uvicorn[standard]
+pandas
+numpy
+SQLAlchemy
+psycopg2-binary
+pymongo
+spacy
+spacy-transformers
+transformers
+sentence-transformers
+scikit-learn
+openai
+beautifulsoup4
+selenium
+requests
+pinecone-client
+faiss-cpu
+python-dotenv
+loguru
+pytest
+pydantic
+python-jose
+cryptography
+black
+flake8
+isort

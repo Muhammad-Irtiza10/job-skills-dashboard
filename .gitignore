@@ -7,3 +7,15 @@ venv/
 .vscode/
 node_modules/
 skillgap_project/settings.py
+
+# local database backups (contain user accounts)
+*.backup
+
+# uploaded profile pictures (local dev)
+media/
+# skill sorting review file
+skill_categories.csv
+# local test emails (password reset links)
+sent_emails/
+# Django collectstatic output
+staticfiles/

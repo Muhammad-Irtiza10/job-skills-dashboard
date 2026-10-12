@@ -4,12 +4,15 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster as Sonner } from "@/components/ui/sonner"
+import { ThemeProvider } from "next-themes"
+import MetroMap from "@/components/MetroMap"
 
 import Index from "./pages/Index"
 import StudentDashboard from "./pages/StudentDashboard"
 import FacultyDashboard from "./pages/FacultyDashboard"
 import Profile from "./pages/Profile"
 import NotFound from "./pages/NotFound"
+import { ForgotPassword, ResetPassword } from "./pages/PasswordPages"
 
 // 1) Spin up react-query
 const queryClient = new QueryClient()
@@ -49,13 +52,18 @@ const App: React.FC = () => {
 
   return (
     <AuthContext.Provider value={{ token, setToken: handleSetToken }}>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Sonner />
           <BrowserRouter>
+            <MetroMap />
+            <div className="relative z-[1]">
             <Routes>
               {/* public */}
               <Route path="/" element={<Index />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:uid/:token" element={<ResetPassword />} />
               {/* protected: must be logged in */}
               <Route
                 path="/student-dashboard"
@@ -84,9 +92,11 @@ const App: React.FC = () => {
               {/* catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </div>
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
+      </ThemeProvider>
     </AuthContext.Provider>
   )
 }

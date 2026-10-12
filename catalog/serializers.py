@@ -9,7 +9,8 @@ User = get_user_model()
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Skill
-        fields = ["id","name"]
+        fields = ["id","name","category"]
+        read_only_fields = ["category"]
 
 class MajorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -49,13 +50,21 @@ class ProfileSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source="user.first_name")
     last_name  = serializers.CharField(source="user.last_name")
     email      = serializers.EmailField(source="user.email")
+    avatar_url = serializers.SerializerMethodField()
 
     class Meta:
         model  = StudentProfile
         fields = [ "first_name", "last_name", "email",
             "company_name", "job_title", "other_job_title",
             "bio", "phone_primary", "phone_secondary", "phone_work",
-            "major", "skills",]
+            "major", "skills", "avatar_url",]
+
+    def get_avatar_url(self, instance):
+        if not instance.avatar:
+            return None
+        request = self.context.get("request")
+        url = instance.avatar.url
+        return request.build_absolute_uri(url) if request else url
     
     def update(self, instance, validated_data):
         # Pull out any user-specific data
@@ -89,7 +98,8 @@ class JobPostingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = JobPosting
-        fields = ["id","title","company_name","location","skills", "job_field"]
+        fields = ["id","title","company_name","location","skills", "job_field",
+                  "source", "url", "date_posted"]
 
 class CertificationSerializer(serializers.ModelSerializer):
     class Meta:

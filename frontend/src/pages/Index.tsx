@@ -1,27 +1,13 @@
 // src/pages/Index.tsx
 import React, { useState } from 'react';
 import { useAuth } from "@/App"
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getStudentToken, getFacultyToken ,apiFetch } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  GraduationCap,
-  Users,
-  BookOpen,
-  TrendingUp,
-  Zap,
-  Brain,
-  Target,
-} from 'lucide-react';
+import { Brain, TrainFront } from 'lucide-react';
+import AppHeader from '@/components/AppHeader';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@radix-ui/react-select';
 import { validateHeaderName } from 'http';
@@ -141,485 +127,379 @@ const Index: React.FC = () => {
     }
   }
 
+  const portalTab = (key: "student" | "faculty", code: string, label: string, color: string) => (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={activePortal === key}
+      onClick={() => setActivePortal(key)}
+      style={{ "--c": color } as React.CSSProperties}
+      className="flex items-center justify-center gap-2.5 border-b-4 border-transparent bg-surface-2 px-3 py-4 font-display text-[17px] font-semibold text-ink-2 aria-selected:border-[color:var(--c)] aria-selected:bg-card aria-selected:text-foreground"
+    >
+      <span className="bullet">{code}</span>
+      {label}
+    </button>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-red-900 to-black">
+    <div className="min-h-screen">
       {/* Error banner */}
       {error && (
-        <div className="bg-red-700 text-white text-center py-2">
+        <div role="alert" className="relative z-10 bg-primary py-2 text-center text-sm font-semibold text-primary-foreground">
           {error}
         </div>
       )}
 
       {/* Header */}
-      <header className="bg-gradient-to-r from-red-600/30 to-black/50 backdrop-blur-sm border-b border-red-400/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-gradient-to-r from-red-500 to-red-700 rounded-lg shadow-lg shadow-red-400/30">
-                <GraduationCap className="h-8 w-8 text-white" />
-              </div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-red-300 via-white to-red-200 bg-clip-text text-transparent">
-                CareerPath Analyzer
-              </h1>
-            </div>
-            <div className="flex items-center space-x-6 text-sm text-gray-200">
-              <div className="flex items-center space-x-2">
-                <Brain className="h-5 w-5 text-red-300" />
-                <span>AI-Powered Matching</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Target className="h-5 w-5 text-white" />
-                <span>Career Analytics</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader subtitle="Skills → jobs, mapped" plain>
+        <span className="chip chip--mine hidden sm:inline-flex">AI-Powered Matching</span>
+        <span className="chip hidden sm:inline-flex" style={{ "--d": "hsl(var(--line-teal))" } as React.CSSProperties}>
+          Career Analytics
+        </span>
+      </AppHeader>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <h2 className="text-5xl font-bold bg-gradient-to-r from-red-300 via-white to-red-200 bg-clip-text text-transparent mb-6">
-            Discover Your Perfect Career Path
-          </h2>
-          <p className="text-xl text-gray-200 max-w-3xl mx-auto leading-relaxed">
+      <main className="mx-auto grid max-w-7xl items-start gap-10 px-4 pb-16 pt-8 sm:px-8 lg:grid-cols-[1.05fr_.95fr] lg:gap-16 lg:pt-14">
+        <section>
+          <p className="eyebrow mb-4 flex items-center gap-2 text-red-ink">
+            <span className="bullet h-[22px] w-[22px]">CP</span>
+            Your career, as a route map
+          </p>
+          <h1 className="rv text-[clamp(44px,5.8vw,80px)] font-extrabold leading-[0.97] tracking-[-0.03em]">
+            {["Discover", "your", "perfect"].map((w, i) => (
+              <React.Fragment key={w}>
+                <span style={{ "--i": i } as React.CSSProperties}>{w}</span>{" "}
+              </React.Fragment>
+            ))}
+            <em className="text-line-red">
+              <span style={{ "--i": 3 } as React.CSSProperties}>career</span>{" "}
+              <span style={{ "--i": 4 } as React.CSSProperties}>path</span>
+            </em>
+          </h1>
+          <p className="mt-5 max-w-[34em] font-display text-xl leading-relaxed text-ink-2">
             Match your skills with industry demands, get AI-powered job
             recommendations, and discover certifications to advance your
             career with our innovative platform.
           </p>
-        </div>
 
-        <div className="flex justify-center mb-8">
-          <button
-            onClick={() => setActivePortal("student")}
-            className={`px-4 py-2 rounded-t-lg -mb-px border-b-2 ${
-              activePortal === "student"
-                ? "border-red-400 text-red-200 bg-red-900"
-                : "border-transparent text-gray-400 hover:text-gray-200"
-            }`}
-          >
-            SkillTracker
-          </button>
-          <button
-            onClick={() => setActivePortal("faculty")}
-            className={`px-4 py-2 rounded-t-lg -mb-px border-b-2 ${
-              activePortal === "faculty"
-                ? "border-blue-400 text-blue-200 bg-blue-900"
-                : "border-transparent text-gray-400 hover:text-gray-200"
-            }`}
-          >
-            Dev Expert
-          </button>
-        </div>
-        <div className="relative">
+          {/* Features: three stops on one line */}
+          <ul className="relative mt-9 before:absolute before:bottom-3.5 before:left-[14px] before:top-3.5 before:w-1.5 before:rounded before:bg-ink">
+            {[
+              ["AI Skill Analysis", "Match your academic skills with industry requirements using advanced AI", "--line-red"],
+              ["Smart Job Matching", "Get personalized job suggestions based on your unique profile", "--line-teal"],
+              ["Learning Pathways", "Discover certifications and courses to bridge skill gaps", "--line-amber"],
+            ].map(([title, text, c]) => (
+              <li key={title} className="relative grid grid-cols-[34px_1fr] gap-4 py-2.5">
+                <span className="relative z-[1] h-[34px] w-[34px] rounded-full border-[5px] bg-station" style={{ borderColor: `hsl(var(${c}))` }} />
+                <div>
+                  <h3 className="text-[19px] font-bold">{title}</h3>
+                  <p className="text-ink-2">{text}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="news-block overflow-hidden" style={{ borderTopWidth: 4 }} aria-label="Sign in">
+          <div className="grid grid-cols-2 border-b" role="tablist">
+            {portalTab("student", "ST", "SkillTracker", "hsl(var(--line-red))")}
+            {portalTab("faculty", "DX", "Dev Expert", "hsl(var(--line-blue))")}
+          </div>
+
           {activePortal === "student" && (
-            <div className="mx-auto max-w-md">
-              {/* Student Card */}
-              <Card className="bg-gradient-to-br from-red-800/60 via-red-900/40 to-gray-800/60 border-red-400/40 backdrop-blur-sm shadow-2xl shadow-red-400/20 hover:shadow-red-400/30 transition-all duration-300 mt-[-1px] bg-gradient-to-br">
-                <CardHeader className="text-center">
-                  <div className="mx-auto w-20 h-20 bg-gradient-to-r from-red-500 to-red-700 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-red-400/40">
-                    <GraduationCap className="h-10 w-10 text-white" />
+            <div className="grid gap-5 p-5 sm:p-8">
+              <div>
+                <h2 className="text-3xl font-extrabold">SkillTracker Portal</h2>
+                <p className="mt-1 text-ink-2">Analyze your skills and discover career opportunities</p>
+              </div>
+              {!showCreateAccount ? (
+                <form onSubmit={handleStudentLogin} className="grid gap-5">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="student-email">Email</Label>
+                    <Input
+                      id="student-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={studentLogin.email}
+                      onChange={(e) =>
+                        setStudentLogin({
+                          ...studentLogin,
+                          email: e.target.value,
+                        })
+                      }
+                      required
+                    />
                   </div>
-                  <CardTitle className="text-3xl bg-gradient-to-r from-red-300 to-white bg-clip-text text-transparent">
-                    SkillTracker Portal
-                  </CardTitle>
-                  <CardDescription className="text-gray-200 text-lg">
-                    Analyze your skills and discover career opportunities
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {!showCreateAccount ? (
-                    <form onSubmit={handleStudentLogin} className="space-y-6">
-                      <div>
-                        <Label htmlFor="student-email" className="text-gray-200">
-                          Email
-                        </Label>
-                        <Input
-                          id="student-email"
-                          type="email"
-                          placeholder="Enter your email"
-                          value={studentLogin.email}
-                          onChange={(e) =>
-                            setStudentLogin({
-                              ...studentLogin,
-                              email: e.target.value,
-                            })
-                          }
-                          required
-                          className="bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="student-password" className="text-gray-200">
-                          Password
-                        </Label>
-                        <Input
-                          id="student-password"
-                          type="password"
-                          placeholder="Enter your password"
-                          value={studentLogin.password}
-                          onChange={(e) =>
-                            setStudentLogin({
-                              ...studentLogin,
-                              password: e.target.value,
-                            })
-                          }
-                          required
-                          className="bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                        />
-                      </div>
-                      <Button
-                        type="submit"
-                        className="w-full bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white font-semibold py-3 rounded-lg shadow-lg shadow-red-400/30"
-                      >
-                        <Zap className="h-4 w-4 mr-2" />
-                        Login as Student
-                      </Button>
-                      <div className="text-center pt-4">
-                        <button
-                          type="button"
-                          onClick={() => setShowCreateAccount(true)}
-                          className="text-red-300 hover:text-red-200 text-sm underline transition-colors"
-                        >
-                          Don't have an account? Create one
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <form onSubmit={handleCreateAccount} className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* First Name */}
-                        <div>
-                          <Label htmlFor="new-first-name" className="text-gray-200">
-                            First Name
-                          </Label>
-                          <Input
-                            id="new-first-name"
-                            type="text"
-                            required
-                            value={newAccount.firstName}
-                            onChange={e =>
-                              setNewAccount({ ...newAccount, firstName: e.target.value })
-                            }
-                            className="bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                          />
-                        </div>
-                        {/* Last Name */}
-                        <div>
-                          <Label htmlFor="new-last-name" className="text-gray-200">
-                            Last Name
-                          </Label>
-                          <Input
-                            id="new-last-name"
-                            type="text"
-                            required
-                            value={newAccount.lastName}
-                            onChange={e =>
-                              setNewAccount({ ...newAccount, lastName: e.target.value })
-                            }
-                            className="bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                          />
-                        </div>
-                        {/* Email */}
-                        <div className="md:col-span-2">
-                          <Label htmlFor="new-email" className="text-gray-200">
-                            Email
-                          </Label>
-                          <Input
-                            id="new-email"
-                            type="email"
-                            required
-                            value={newAccount.email}
-                            onChange={e =>
-                              setNewAccount({ ...newAccount, email: e.target.value })
-                            }
-                            className="bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                          />
-                        </div>
-                        {/* Company Name */}
-                        <div className="md:col-span-2">
-                          <Label htmlFor="new-company" className="text-gray-200">
-                            Company Name
-                          </Label>
-                          <Input
-                            id="new-company"
-                            type="text"
-                            value={newAccount.companyName}
-                            onChange={e =>
-                              setNewAccount({ ...newAccount, companyName: e.target.value })
-                            }
-                            className="bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                          />
-                        </div>
-                        {/* Job Title */}
-                        <div className="md:col-span-2 space-y-2">
-                          <Label className="text-gray-200">Job Title</Label>
-
-                          <div className="flex items-center space-x-6">
-                            {(['student','alumni','other'] as const).map((opt) => (
-                              <label key={opt} className="inline-flex items-center text-gray-200">
-                                <input
-                                  type="radio"
-                                  name="jobTitle"
-                                  value={opt}
-                                  checked={newAccount.jobTitle === opt}
-                                  onChange={() =>
-                                    setNewAccount({ ...newAccount, jobTitle: opt })
-                                  }
-                                  className="form-radio h-4 w-4 text-red-500 bg-transparent border-white"
-                                />
-                                <span className="ml-2 capitalize">{opt}</span>
-                              </label>
-                            ))}
-                          </div>
-
-                          {newAccount.jobTitle === 'other' && (
-                            <Input
-                              id="new-other-job"
-                              placeholder="Please specify"
-                              value={newAccount.otherJobs}
-                              onChange={(e) =>
-                                setNewAccount({ ...newAccount, otherJobs: e.target.value })
-                              }
-                              className="mt-2 bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                            />
-                          )}
-                        </div>
-                        {/* Password */}
-                        <div>
-                          <Label htmlFor="new-password" className="text-gray-200">
-                            Password
-                          </Label>
-                          <Input
-                            id="new-password"
-                            type="password"
-                            required
-                            value={newAccount.password}
-                            onChange={e =>
-                              setNewAccount({ ...newAccount, password: e.target.value })
-                            }
-                            className="bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                          />
-                        </div>
-                        {/* Confirm Password */}
-                        <div>
-                          <Label htmlFor="confirm-password" className="text-gray-200">
-                            Confirm Password
-                          </Label>
-                          <Input
-                            id="confirm-password"
-                            type="password"
-                            required
-                            value={newAccount.confirmPassword}
-                            onChange={e =>
-                              setNewAccount({ ...newAccount, confirmPassword: e.target.value })
-                            }
-                            className="bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                          />
-                        </div>
-                        {/* Bio */}
-                        <div className="md:col-span-2">
-                          <Label htmlFor="new-bio" className="text-gray-200">
-                            Bio
-                          </Label>
-                          <Textarea
-                            id="new-bio"
-                            rows={3}
-                            value={newAccount.bio}
-                            onChange={e =>
-                              setNewAccount({ ...newAccount, bio: e.target.value })
-                            }
-                            className="bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                          />
-                        </div>
-                        {/* Phones */}
-                        <div>
-                          <Label htmlFor="new-phone1" className="text-gray-200">
-                            Primary Phone
-                          </Label>
-                          <Input
-                            id="new-phone1"
-                            type="tel"
-                            value={newAccount.phonePrimary}
-                            onChange={e =>
-                              setNewAccount({ ...newAccount, phonePrimary: e.target.value })
-                            }
-                            className="bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="new-phone2" className="text-gray-200">
-                            Secondary Phone
-                          </Label>
-                          <Input
-                            id="new-phone2"
-                            type="tel"
-                            value={newAccount.phoneSecondary}
-                            onChange={e =>
-                              setNewAccount({
-                                ...newAccount,
-                                phoneSecondary: e.target.value,
-                              })
-                            }
-                            className="bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <Label htmlFor="new-phone3" className="text-gray-200">
-                            Work Phone
-                          </Label>
-                          <Input
-                            id="new-phone3"
-                            type="tel"
-                            value={newAccount.phoneWork}
-                            onChange={e =>
-                              setNewAccount({ ...newAccount, phoneWork: e.target.value })
-                            }
-                            className="bg-gray-800/50 border-red-400/50 text-white placeholder-gray-300 focus:border-red-300 focus:ring-red-300/30"
-                          />
-                        </div>
-                      </div>
-
-                      <Button
-                        type="submit"
-                        className="w-full bg-gradient-to-r from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white font-semibold py-3 rounded-lg shadow-lg shadow-green-400/30"
-                      >
-                        Create Account
-                      </Button>
-
-                      <div className="text-center pt-4">
-                        <button
-                          type="button"
-                          onClick={() => setShowCreateAccount(false)}
-                          className="text-gray-300 hover:text-gray-200 text-sm underline transition-colors"
-                        >
-                          Back to login
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-          {activePortal === "faculty" && (
-            <div className="mx-auto max-w-md">
-              {/* Faculty Card */}
-              <Card className="bg-gradient-to-br from-blue-900/60 via-gray-800/60 to-slate-800/60 border-blue-400/40 backdrop-blur-sm shadow-2xl shadow-blue-400/20 hover:shadow-blue-400/30 transition-all duration-300 mt-[-1px] bg-gradient-to-br">
-                <CardHeader className="text-center">
-                  <div className="mx-auto w-20 h-20 bg-gradient-to-r from-blue-600 to-blue-800 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-blue-400/40">
-                    <Users className="h-10 w-10 text-white" />
+                  <div className="space-y-1.5">
+                    <div className="flex items-baseline justify-between">
+                      <Label htmlFor="student-password">Password</Label>
+                      <Link to="/forgot-password" className="text-sm font-semibold text-red-ink underline underline-offset-4">Forgot password?</Link>
+                    </div>
+                    <Input
+                      id="student-password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={studentLogin.password}
+                      onChange={(e) =>
+                        setStudentLogin({
+                          ...studentLogin,
+                          password: e.target.value,
+                        })
+                      }
+                      required
+                    />
                   </div>
-                  <CardTitle className="text-3xl bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">
-                    Development Expert Portal
-                  </CardTitle>
-                  <CardDescription className="text-gray-200 text-lg">
-                    Access analytics and insights about career trends
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form
-                    onSubmit={handleFacultyLogin}
-                    className="space-y-6"
-                  >
-                    <div>
-                      <Label
-                        htmlFor="faculty-email"
-                        className="text-gray-200"
-                      >
-                        Faculty Email
-                      </Label>
-                      <Input
-                        id="faculty-email"
-                        type="email"
-                        placeholder="Enter your faculty email"
-                        value={facultyLogin.email}
-                        onChange={(e) =>
-                          setFacultyLogin({
-                            ...facultyLogin,
-                            email: e.target.value,
-                          })
-                        }
-                        required
-                        className="bg-gray-800/50 border-blue-400/50 text-white placeholder-gray-300 focus:border-blue-300 focus:ring-blue-300/30"
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="faculty-password"
-                        className="text-gray-200"
-                      >
-                        Password
-                      </Label>
-                      <Input
-                        id="faculty-password"
-                        type="password"
-                        placeholder="Enter your password"
-                        value={facultyLogin.password}
-                        onChange={(e) =>
-                          setFacultyLogin({
-                            ...facultyLogin,
-                            password: e.target.value,
-                          })
-                        }
-                        required
-                        className="bg-gray-800/50 border-blue-400/50 text-white placeholder-gray-300 focus:border-blue-300 focus:ring-blue-300/30"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-semibold py-3 rounded-lg shadow-lg shadow-blue-400/30"
+                  <Button type="submit" className="h-11">
+                    <TrainFront />
+                    Login as Student
+                  </Button>
+                  <p className="text-center text-sm text-ink-2">
+                    Don't have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateAccount(true)}
+                      className="font-semibold text-red-ink underline underline-offset-4"
                     >
-                      <Brain className="h-4 w-4 mr-2" />
-                      Login as Faculty
-                    </Button>
-                    <div className="text-center pt-4 text-sm text-gray-300">
-                      Faculty accounts are managed by administration
+                      Create one
+                    </button>
+                  </p>
+                </form>
+              ) : (
+                <form onSubmit={handleCreateAccount} className="grid gap-5">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {/* First Name */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-first-name">First Name</Label>
+                      <Input
+                        id="new-first-name"
+                        type="text"
+                        required
+                        value={newAccount.firstName}
+                        onChange={e =>
+                          setNewAccount({ ...newAccount, firstName: e.target.value })
+                        }
+                      />
                     </div>
-                  </form>
-                </CardContent>
-              </Card>
+                    {/* Last Name */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-last-name">Last Name</Label>
+                      <Input
+                        id="new-last-name"
+                        type="text"
+                        required
+                        value={newAccount.lastName}
+                        onChange={e =>
+                          setNewAccount({ ...newAccount, lastName: e.target.value })
+                        }
+                      />
+                    </div>
+                    {/* Email */}
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label htmlFor="new-email">Email</Label>
+                      <Input
+                        id="new-email"
+                        type="email"
+                        required
+                        value={newAccount.email}
+                        onChange={e =>
+                          setNewAccount({ ...newAccount, email: e.target.value })
+                        }
+                      />
+                    </div>
+                    {/* Company Name */}
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label htmlFor="new-company">Company Name</Label>
+                      <Input
+                        id="new-company"
+                        type="text"
+                        value={newAccount.companyName}
+                        onChange={e =>
+                          setNewAccount({ ...newAccount, companyName: e.target.value })
+                        }
+                      />
+                    </div>
+                    {/* Job Title */}
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Job Title</Label>
+                      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Job title">
+                        {(['student','alumni','other'] as const).map((opt) => (
+                          <label
+                            key={opt}
+                            className="inline-flex cursor-pointer items-center gap-2 rounded-full border bg-field px-3.5 py-2 font-medium has-[:checked]:border-line-red has-[:checked]:bg-red-soft"
+                          >
+                            <input
+                              type="radio"
+                              name="jobTitle"
+                              value={opt}
+                              checked={newAccount.jobTitle === opt}
+                              onChange={() =>
+                                setNewAccount({ ...newAccount, jobTitle: opt })
+                              }
+                              className="m-0 accent-[hsl(var(--line-red))]"
+                            />
+                            <span className="capitalize">{opt}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      {newAccount.jobTitle === 'other' && (
+                        <Input
+                          id="new-other-job"
+                          aria-label="Other job title"
+                          placeholder="Please specify"
+                          value={newAccount.otherJobs}
+                          onChange={(e) =>
+                            setNewAccount({ ...newAccount, otherJobs: e.target.value })
+                          }
+                        />
+                      )}
+                    </div>
+                    {/* Password */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-password">Password</Label>
+                      <Input
+                        id="new-password"
+                        type="password"
+                        required
+                        value={newAccount.password}
+                        onChange={e =>
+                          setNewAccount({ ...newAccount, password: e.target.value })
+                        }
+                      />
+                    </div>
+                    {/* Confirm Password */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="confirm-password">Confirm Password</Label>
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        required
+                        value={newAccount.confirmPassword}
+                        onChange={e =>
+                          setNewAccount({ ...newAccount, confirmPassword: e.target.value })
+                        }
+                      />
+                    </div>
+                    {/* Bio */}
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label htmlFor="new-bio">Bio</Label>
+                      <Textarea
+                        id="new-bio"
+                        rows={3}
+                        value={newAccount.bio}
+                        onChange={e =>
+                          setNewAccount({ ...newAccount, bio: e.target.value })
+                        }
+                      />
+                    </div>
+                    {/* Phones */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-phone1">Primary Phone</Label>
+                      <Input
+                        id="new-phone1"
+                        type="tel"
+                        value={newAccount.phonePrimary}
+                        onChange={e =>
+                          setNewAccount({ ...newAccount, phonePrimary: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-phone2">Secondary Phone</Label>
+                      <Input
+                        id="new-phone2"
+                        type="tel"
+                        value={newAccount.phoneSecondary}
+                        onChange={e =>
+                          setNewAccount({
+                            ...newAccount,
+                            phoneSecondary: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label htmlFor="new-phone3">Work Phone</Label>
+                      <Input
+                        id="new-phone3"
+                        type="tel"
+                        value={newAccount.phoneWork}
+                        onChange={e =>
+                          setNewAccount({ ...newAccount, phoneWork: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <Button type="submit" className="h-11">
+                    Create Account
+                  </Button>
+
+                  <p className="text-center text-sm">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateAccount(false)}
+                      className="font-semibold text-red-ink underline underline-offset-4"
+                    >
+                      Back to login
+                    </button>
+                  </p>
+                </form>
+              )}
             </div>
           )}
-        </div>
 
-        {/* Features Section */}
-        <div className="mt-20 grid md:grid-cols-3 gap-8">
-          <div className="text-center group">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-red-500 to-red-700 rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-red-400/30 group-hover:shadow-red-400/50 transition-all duration-300">
-              <BookOpen className="h-8 w-8 text-white" />
-            </div>
-            <h3 className="text-xl font-semibold mb-3 text-red-200">
-              AI Skill Analysis
-            </h3>
-            <p className="text-gray-200">
-              Match your academic skills with industry requirements using
-              advanced AI
-            </p>
-          </div>
-          <div className="text-center group">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-white to-gray-200 rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-white/20 group-hover:shadow-white/30 transition-all duration-300">
-              <Target className="h-8 w-8 text-black" />
-            </div>
-            <h3 className="text-xl font-semibold mb-3 text-white">
-              Smart Job Matching
-            </h3>
-            <p className="text-gray-200">
-              Get personalized job suggestions based on your unique profile
-            </p>
-          </div>
-          <div className="text-center group">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-r from-gray-700 to-gray-900 rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-gray-500/30 group-hover:shadow-gray-500/50 transition-all duration-300 border border-red-400/30">
-              <GraduationCap className="h-8 w-8 text-red-300" />
-            </div>
-            <h3 className="text-xl font-semibold mb-3 text-gray-200">
-              Learning Pathways
-            </h3>
-            <p className="text-gray-200">
-              Discover certifications and courses to bridge skill gaps
-            </p>
-          </div>
-        </div>
+          {activePortal === "faculty" && (
+            <form onSubmit={handleFacultyLogin} className="grid gap-5 p-5 sm:p-8">
+              <div>
+                <h2 className="text-3xl font-extrabold">Development Expert Portal</h2>
+                <p className="mt-1 text-ink-2">Access analytics and insights about career trends</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="faculty-email">Faculty Email</Label>
+                <Input
+                  id="faculty-email"
+                  type="email"
+                  placeholder="Enter your faculty email"
+                  value={facultyLogin.email}
+                  onChange={(e) =>
+                    setFacultyLogin({
+                      ...facultyLogin,
+                      email: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-baseline justify-between">
+                  <Label htmlFor="faculty-password">Password</Label>
+                  <Link to="/forgot-password" className="text-sm font-semibold text-red-ink underline underline-offset-4">Forgot password?</Link>
+                </div>
+                <Input
+                  id="faculty-password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={facultyLogin.password}
+                  onChange={(e) =>
+                    setFacultyLogin({
+                      ...facultyLogin,
+                      password: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </div>
+              <Button type="submit" className="h-11 bg-line-blue text-white hover:bg-line-blue/90">
+                <Brain />
+                Login as Faculty
+              </Button>
+              <p className="text-center text-sm text-ink-2">
+                Faculty accounts are managed by administration
+              </p>
+            </form>
+          )}
+        </section>
       </main>
     </div>
   );

@@ -18,7 +18,33 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				display: ['Newsreader', 'Georgia', '"Times New Roman"', 'serif'],
+				sans: ['"Public Sans"', '"Segoe UI"', 'system-ui', 'sans-serif'],
+				mono: ['"IBM Plex Mono"', 'ui-monospace', 'Consolas', 'monospace'],
+			},
 			colors: {
+				ink: {
+					DEFAULT: 'hsl(var(--ink))',
+					2: 'hsl(var(--ink-2))',
+					3: 'hsl(var(--ink-3))'
+				},
+				'surface-2': 'hsl(var(--surface-2))',
+				field: 'hsl(var(--field))',
+				station: 'hsl(var(--station))',
+				line: {
+					red: 'hsl(var(--line-red))',
+					teal: 'hsl(var(--line-teal))',
+					blue: 'hsl(var(--line-blue))',
+					amber: 'hsl(var(--line-amber))'
+				},
+				'red-ink': 'hsl(var(--red-ink))',
+				'red-soft': 'hsl(var(--red-soft))',
+				'amber-ink': 'hsl(var(--amber-ink))',
+				good: {
+					DEFAULT: 'hsl(var(--good))',
+					soft: 'hsl(var(--good-soft))'
+				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',

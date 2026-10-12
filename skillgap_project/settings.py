@@ -10,22 +10,41 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Everything secret or environment-specific comes from environment variables
+# (or a local .env file). The defaults below keep local development working as before.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    pass
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-v(6carwal_y+2wl7kl=76$um7j^4=_b$uy-@r%l#_snz*9^k0$"
+def env_list(name, default=""):
+    return [v.strip() for v in os.environ.get(name, default).split(",") if v.strip()]
 
 
-DEBUG = True
+DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
 
-ALLOWED_HOSTS = []
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured("Set DJANGO_SECRET_KEY when DJANGO_DEBUG is false.")
+    SECRET_KEY = "django-insecure-local-development-only"
+
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
+
+# Behind nginx / Azure: trust the forwarded host and https so links (e.g. profile photos) are correct
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
 # Application definition
@@ -51,6 +70,8 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    # limits for the public password endpoints (per client IP)
+    "DEFAULT_THROTTLE_RATES": {"password_reset": "5/hour"},
 
 }
     
@@ -65,7 +86,18 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+# whitenoise serves the admin's CSS/JS in the container (installed there via requirements.txt)
+try:
+    import whitenoise  # noqa: F401
+    MIDDLEWARE.insert(MIDDLEWARE.index("django.middleware.security.SecurityMiddleware") + 1,
+                      "whitenoise.middleware.WhiteNoiseMiddleware")
+except ImportError:
+    pass
+
+# Local dev: the Vite dev server (another port) calls the API directly, so allow any origin.
+# In containers the frontend reaches the API through its own nginx (same origin), so no CORS needed.
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOWED_ORIGINS = env_list("DJANGO_CORS_ALLOWED_ORIGINS")
 
 ROOT_URLCONF = "skillgap_project.urls"
 
@@ -93,11 +125,13 @@ WSGI_APPLICATION = "skillgap_project.wsgi.application"
 DATABASES = {
   'default': {
     'ENGINE':   'django.db.backends.postgresql',
-    'NAME':     'skillgap_local',
-    'USER':     'postgres',
-    'PASSWORD': 'root',       # or whatever you set at install
-    'HOST':     'localhost',
-    'PORT':     '5432',
+    'NAME':     os.environ.get('DB_NAME', 'skillgap_local'),
+    'USER':     os.environ.get('DB_USER', 'postgres'),
+    'PASSWORD': os.environ.get('DB_PASSWORD', 'root'),  # local default only; set DB_PASSWORD elsewhere
+    'HOST':     os.environ.get('DB_HOST', 'localhost'),
+    'PORT':     os.environ.get('DB_PORT', '5432'),
+    'OPTIONS':  {'sslmode': os.environ['DB_SSLMODE']} if os.environ.get('DB_SSLMODE') else {},
+    'CONN_MAX_AGE': 60,
   }
 }
 
@@ -137,6 +171,32 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"  # collectstatic target, served by whitenoise
+
+# Uploaded files (profile pictures). Local folder for now; cloud storage when deployed.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+AVATAR_MAX_BYTES = 2 * 1024 * 1024
+MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", MEDIA_ROOT))
+# Django serves uploaded photos itself. ponytail: fine for one small instance; move to Azure Blob
+# Storage (django-storages) if several instances run or uploads grow.
+SERVE_MEDIA = os.environ.get("SERVE_MEDIA", "true").lower() == "true"
+
+# Email (password reset). Values come from environment variables or a local .env file
+# (never committed). Without EMAIL_HOST, emails are saved as files in sent_emails/ instead.
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:8080")
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "true").lower() == "true"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "CareerPath Analyzer <no-reply@localhost>")
+EMAIL_BACKEND = (
+    "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST
+    else "django.core.mail.backends.filebased.EmailBackend"
+)
+EMAIL_FILE_PATH = BASE_DIR / "sent_emails"
+PASSWORD_RESET_TIMEOUT = 60 * 60  # reset links work for 1 hour
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

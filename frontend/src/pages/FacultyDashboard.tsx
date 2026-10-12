@@ -10,29 +10,29 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
 import {
   ResponsiveContainer,
-  BarChart,
   CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
   LineChart,
   Line,
 } from 'recharts'
 import {
   TrendingUp,
   Users,
-  BookOpen,
   Briefcase,
   Award,
-  BarChart3,
+  Minus,
+  Cloud,
+  Brain,
+  Wrench,
+  LogOut,
 } from 'lucide-react'
+import AppHeader from '@/components/AppHeader'
+import { BarList } from '@/components/charts'
 import { useNavigate } from 'react-router-dom'
 
 const FacultyDashboard: React.FC = () => {
@@ -96,345 +96,205 @@ const FacultyDashboard: React.FC = () => {
   ]
   // —————————————————————————————————————————
 
+  const tooltipStyle = {
+    backgroundColor: 'hsl(var(--ink))',
+    border: 'none',
+    borderRadius: '4px',
+    color: 'hsl(var(--card))',
+    fontSize: 13,
+  }
+  const trendLines: Array<[keyof typeof skillDemandTrend[number], string, string]> = [
+    ['programming', 'Programming', 'hsl(var(--line-red))'],
+    ['machineLearning', 'Machine Learning', 'hsl(var(--line-teal))'],
+    ['cloudComputing', 'Cloud Computing', 'hsl(var(--line-blue))'],
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-gray-800">
+    <div className="min-h-screen pb-16">
       {/* Header */}
-      <header className="bg-gradient-to-r from-blue-600/40 to-slate-700/40 backdrop-blur-sm border-b border-blue-300/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-200 to-white bg-clip-text text-transparent">
-              Faculty Analytics Dashboard
-            </h1>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/')}
-              className="border-blue-300/50 text-blue-100 hover:bg-blue-700/30 hover:text-white"
-            >
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
+      <AppHeader subtitle="Faculty analytics">
+        <Button variant="outline" onClick={() => navigate('/')}>
+          <LogOut /><span className="hidden sm:inline">Logout</span>
+        </Button>
+      </AppHeader>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="fade mx-auto grid max-w-7xl grid-cols-12 gap-5 px-4 py-7 sm:px-8">
+        <div className="col-span-12">
+          <p className="eyebrow mb-1.5 flex items-center gap-2">
+            <span className="bullet h-[22px] w-[22px]" style={{ '--c': 'hsl(var(--line-blue))' } as React.CSSProperties}>DX</span>
+            Development Expert
+          </p>
+          <h1 className="text-[clamp(34px,4.2vw,54px)] font-extrabold leading-tight tracking-[-0.025em]">Faculty Analytics Dashboard</h1>
+        </div>
+
         {/* Controls */}
-        <div className="grid md:grid-cols-2 gap-4">
-          <Card className="bg-gradient-to-br from-blue-800/50 to-slate-800/50 border-blue-300/40 backdrop-blur-sm shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-lg text-white">Select Major</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Select value={selectedMajor} onValueChange={setSelectedMajor}>
-                <SelectTrigger className="bg-slate-800/50 border-blue-300/50 text-white">
-                  <SelectValue placeholder="Choose major" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-blue-300/50">
-                  {majors.map((m) => (
-                    <SelectItem
-                      key={m}
-                      value={m}
-                      className="text-white hover:bg-blue-700/50 focus:bg-blue-700/50"
-                    >
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-blue-800/50 to-slate-800/50 border-blue-300/40 backdrop-blur-sm shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-lg text-white">Select Job Field</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Select value={selectedJobField} onValueChange={setSelectedJobField}>
-                <SelectTrigger className="bg-slate-800/50 border-blue-300/50 text-white">
-                  <SelectValue placeholder="Choose job field" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-blue-300/50">
-                  {jobFields.map((f) => (
-                    <SelectItem
-                      key={f}
-                      value={f}
-                      className="text-white hover:bg-blue-700/50 focus:bg-blue-700/50"
-                    >
-                      {f}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="col-span-12 grid gap-4 p-5 sm:p-6 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="faculty-major">Select Major</Label>
+            <Select value={selectedMajor} onValueChange={setSelectedMajor}>
+              <SelectTrigger id="faculty-major">
+                <SelectValue placeholder="Choose major" />
+              </SelectTrigger>
+              <SelectContent>
+                {majors.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="faculty-field">Select Job Field</Label>
+            <Select value={selectedJobField} onValueChange={setSelectedJobField}>
+              <SelectTrigger id="faculty-field">
+                <SelectValue placeholder="Choose job field" />
+              </SelectTrigger>
+              <SelectContent>
+                {jobFields.map((f) => (
+                  <SelectItem key={f} value={f}>
+                    {f}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </Card>
 
         {/* Key Metrics */}
-        <div className="grid md:grid-cols-4 gap-6">
-          <Card className="bg-gradient-to-br from-blue-800/50 to-slate-800/50 border-blue-300/40 backdrop-blur-sm shadow-xl">
-            <CardHeader className="flex justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-blue-100">
-                Total Students
-              </CardTitle>
-              <Users className="h-4 w-4 text-blue-300" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">1,247</div>
-              <p className="text-xs text-blue-200">+12% from last semester</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-blue-800/50 to-slate-800/50 border-blue-300/40 backdrop-blur-sm shadow-xl">
-            <CardHeader className="flex justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-blue-100">
-                Job Placements
-              </CardTitle>
-              <Briefcase className="h-4 w-4 text-blue-300" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">892</div>
-              <p className="text-xs text-blue-200">71.5% placement rate</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-blue-800/50 to-slate-800/50 border-blue-300/40 backdrop-blur-sm shadow-xl">
-            <CardHeader className="flex justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-blue-100">
-                Skill Gap Average
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-blue-300" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">42%</div>
-              <p className="text-xs text-blue-200">-5% from last quarter</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-blue-800/50 to-slate-800/50 border-blue-300/40 backdrop-blur-sm shadow-xl">
-            <CardHeader className="flex justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-blue-100">
-                Active Certifications
-              </CardTitle>
-              <Award className="h-4 w-4 text-blue-300" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">156</div>
-              <p className="text-xs text-blue-200">+23% this month</p>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="col-span-12 grid grid-cols-2 lg:grid-cols-4">
+          {([
+            ['Total Students', '1,247', '+12% from last semester', <Users key="u" />],
+            ['Job Placements', '892', '71.5% placement rate', <Briefcase key="b" />],
+            ['Skill Gap Average', '42%', '-5% from last quarter', <TrendingUp key="t" />],
+            ['Active Certifications', '156', '+23% this month', <Award key="a" />],
+          ] as const).map(([k, v, d, icon], i) => (
+            <div key={k} className={`min-w-0 p-5 ${i % 2 === 0 ? 'border-r' : ''} ${i < 2 ? 'border-b lg:border-b-0' : ''} lg:border-r lg:last:border-r-0`}>
+              <div className="eyebrow flex items-center justify-between gap-2 [&_svg]:h-4 [&_svg]:w-4">{k}{icon}</div>
+              <div className="mt-1.5 font-display text-[40px] font-extrabold leading-none tabular-nums">{v}</div>
+              <p className="mt-1 text-[13px] text-ink-2">{d}</p>
+            </div>
+          ))}
+        </Card>
 
         {/* Skill Relevance Analysis */}
-        <Card className="bg-gradient-to-br from-blue-800/50 to-slate-800/50 border-blue-300/40 backdrop-blur-sm shadow-xl">
+        <Card className="col-span-12 lg:col-span-7">
           <CardHeader>
-            <div className="flex items-center space-x-2">
-              <BarChart3 className="h-5 w-5 text-blue-300" />
-              <CardTitle className="text-white">
-                Skill Relevance Scores for {selectedMajor}
-              </CardTitle>
-            </div>
-            <CardDescription className="text-blue-200">
+            <CardTitle>Skill Relevance Scores for {selectedMajor}</CardTitle>
+            <CardDescription>
               Industry demand and relevance scores for skills in this major
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={skillRelevanceData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                  <XAxis
-                    dataKey="skill"
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                    tick={{ fill: '#cbd5e1' }}
-                  />
-                  <YAxis tick={{ fill: '#cbd5e1' }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #475569',
-                      borderRadius: '8px',
-                      color: '#ffffff',
-                    }}
-                  />
-                  <Bar dataKey="relevanceScore" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <BarList
+              color="hsl(var(--line-blue))"
+              rows={skillRelevanceData.map(d => ({ label: d.skill, pct: d.relevanceScore, value: `${d.relevanceScore}%`, tip: `${d.skill}: relevance ${d.relevanceScore}%, demand ${d.demandTrend}` }))}
+            />
+            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-[13px] text-ink-2">
               {skillRelevanceData.slice(0, 4).map((d) => (
-                <div key={d.skill} className="text-center">
-                  <p className="font-medium text-sm text-blue-100">{d.skill}</p>
-                  <p className="text-2xl font-bold text-blue-300">
-                    {d.relevanceScore}%
-                  </p>
-                  <Badge
-                    variant={d.demandTrend === 'increasing' ? 'default' : 'secondary'}
-                    className="bg-blue-600 text-white"
-                  >
+                <span key={d.skill} className="inline-flex items-center gap-1.5">
+                  {d.skill}
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${d.demandTrend === 'increasing' ? 'bg-good-soft text-good' : 'bg-surface-2'}`}>
+                    {d.demandTrend === 'increasing' ? <TrendingUp className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
                     {d.demandTrend}
-                  </Badge>
-                </div>
+                  </span>
+                </span>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Job Field Distribution & Demand Trend */}
-        <div className="grid lg:grid-cols-2 gap-8">
-          <Card className="bg-gradient-to-br from-blue-800/50 to-slate-800/50 border-blue-300/40 backdrop-blur-sm shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-white">
-                Job Field Distribution – {selectedMajor}
-              </CardTitle>
-              <CardDescription className="text-blue-200">
-                Where graduates typically find employment
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={majorJobDistribution}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      dataKey="percentage"
-                      label={({ jobField, percentage }) => `${jobField}: ${percentage}%`}
-                    >
-                      {majorJobDistribution.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#1e293b',
-                        border: '1px solid #475569',
-                        borderRadius: '8px',
-                        color: '#ffffff',
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Job Field Distribution */}
+        <Card className="col-span-12 lg:col-span-5">
+          <CardHeader>
+            <CardTitle>Job Field Distribution – {selectedMajor}</CardTitle>
+            <CardDescription>
+              Where graduates typically find employment
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BarList
+              thin
+              color="hsl(var(--line-teal))"
+              rows={majorJobDistribution.map(d => ({ label: d.jobField, pct: (d.percentage / 35) * 100, value: `${d.percentage}%`, tip: `${d.jobField}: ${d.percentage}% of graduates` }))}
+            />
+          </CardContent>
+        </Card>
 
-          <Card className="bg-gradient-to-br from-blue-800/50 to-slate-800/50 border-blue-300/40 backdrop-blur-sm shadow-xl">
-            <CardHeader>
-              <CardTitle className="text-white">Skill Demand Trends</CardTitle>
-              <CardDescription className="text-blue-200">
-                6-month trend analysis for top skills
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={skillDemandTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                    <XAxis dataKey="month" tick={{ fill: '#cbd5e1' }} />
-                    <YAxis tick={{ fill: '#cbd5e1' }} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#1e293b',
-                        border: '1px solid #475569',
-                        borderRadius: '8px',
-                        color: '#ffffff',
-                      }}
-                    />
-                    <Line type="monotone" dataKey="programming" stroke="#3b82f6" strokeWidth={2} />
-                    <Line
-                      type="monotone"
-                      dataKey="machineLearning"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="cloudComputing"
-                      stroke="#f59e0b"
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Demand Trend */}
+        <Card className="col-span-12 lg:col-span-7">
+          <CardHeader>
+            <CardTitle>Skill Demand Trends</CardTitle>
+            <CardDescription>
+              6-month trend analysis for top skills
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-2.5 flex flex-wrap gap-4 text-[13px] text-ink-2">
+              {trendLines.map(([, label, color]) => (
+                <span key={label} className="inline-flex items-center gap-1.5">
+                  <i className="h-1 w-3.5 rounded-sm" style={{ background: color }} />{label}
+                </span>
+              ))}
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={skillDemandTrend} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+                  <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--ink-3))', fontSize: 12 }} />
+                  <YAxis domain={[50, 100]} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--ink-3))', fontSize: 12 }} />
+                  <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'hsl(var(--card))' }} labelStyle={{ color: 'hsl(var(--card))' }} cursor={{ stroke: 'hsl(var(--ink-3))', strokeDasharray: '3 3' }} />
+                  {trendLines.map(([key, label, color]) => (
+                    <Line key={key} name={label} type="monotone" dataKey={key} stroke={color} strokeWidth={2.5} dot={false} activeDot={{ r: 5, stroke: 'hsl(var(--card))', strokeWidth: 2 }} />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Student Skill Gaps */}
-        <Card className="bg-gradient-to-br from-blue-800/50 to-slate-800/50 border-blue-300/40 backdrop-blur-sm shadow-xl">
+        <Card className="col-span-12 lg:col-span-5">
           <CardHeader>
-            <CardTitle className="text-white">Student Skill Gap Analysis</CardTitle>
-            <CardDescription className="text-blue-200">
+            <CardTitle>Student Skill Gap Analysis</CardTitle>
+            <CardDescription>
               Skills where students need the most improvement for {selectedJobField}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {studentSkillGaps.map((g) => (
-                <div
-                  key={g.skill}
-                  className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-blue-300/20"
-                >
-                  <div>
-                    <h4 className="font-medium text-white">{g.skill}</h4>
-                    <p className="text-sm text-blue-200">
-                      {g.studentsNeedingSkill} students need this skill
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-red-400">
-                      {g.gapPercentage}%
-                    </div>
-                    <p className="text-sm text-blue-200">skill gap</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <BarList
+              color="hsl(var(--line-amber))"
+              rows={studentSkillGaps.map(g => ({ label: g.skill, pct: g.gapPercentage, value: `${g.gapPercentage}%`, tip: `${g.skill}: ${g.gapPercentage}% skill gap · ${g.studentsNeedingSkill} students need this skill` }))}
+            />
+            <p className="mt-3 text-[13px] text-ink-3">Bar = skill gap. Hover a row for how many students need it.</p>
           </CardContent>
         </Card>
 
         {/* Recommendations */}
-        <Card className="bg-gradient-to-br from-blue-800/50 to-slate-800/50 border-blue-300/40 backdrop-blur-sm shadow-xl">
+        <Card className="col-span-12">
           <CardHeader>
-            <CardTitle className="text-white">Curriculum Recommendations</CardTitle>
-            <CardDescription className="text-blue-200">
+            <CardTitle>Curriculum Recommendations</CardTitle>
+            <CardDescription>
               Suggested improvements based on industry analysis
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-blue-800/30 rounded-lg border-l-4 border-blue-400">
-              <h4 className="font-medium text-blue-200">
-                Increase Cloud Computing Focus
-              </h4>
-              <p className="text-blue-100 text-sm mt-1">
-                45% of students lack cloud computing skills. Consider adding
-                AWS/Azure certifications to curriculum.
-              </p>
-            </div>
-            <div className="p-4 bg-green-800/30 rounded-lg border-l-4 border-green-400">
-              <h4 className="font-medium text-green-200">
-                Machine Learning Integration
-              </h4>
-              <p className="text-green-100 text-sm mt-1">
-                High demand trend for ML skills. Recommend introducing practical
-                ML projects in coursework.
-              </p>
-            </div>
-            <div className="p-4 bg-yellow-800/30 rounded-lg border-l-4 border-yellow-400">
-              <h4 className="font-medium text-yellow-200">
-                DevOps Skills Development
-              </h4>
-              <p className="text-yellow-100 text-sm mt-1">
-                52% skill gap in DevOps. Consider partnering with industry for
-                hands-on training programs.
-              </p>
-            </div>
+          <CardContent className="grid gap-3 md:grid-cols-3">
+            {([
+              ['Increase Cloud Computing Focus', '45% of students lack cloud computing skills. Consider adding AWS/Azure certifications to curriculum.', '--line-blue', <Cloud key="c" />],
+              ['Machine Learning Integration', 'High demand trend for ML skills. Recommend introducing practical ML projects in coursework.', '--line-teal', <Brain key="b" />],
+              ['DevOps Skills Development', '52% skill gap in DevOps. Consider partnering with industry for hands-on training programs.', '--line-amber', <Wrench key="w" />],
+            ] as const).map(([title, text, c, icon]) => (
+              <div key={title} className="grid grid-cols-[30px_1fr] gap-3 rounded-sm bg-surface-2 p-4">
+                <span className="bullet h-[30px] w-[30px] [&_svg]:h-4 [&_svg]:w-4" style={{ '--c': `hsl(var(${c}))` } as React.CSSProperties}>{icon}</span>
+                <div>
+                  <h4 className="font-semibold">{title}</h4>
+                  <p className="mt-0.5 text-sm text-ink-2">{text}</p>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   )
 }

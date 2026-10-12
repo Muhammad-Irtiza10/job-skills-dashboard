@@ -2,93 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
+/* Design system: "Career Lines". Metro-map world, newspaper type, compass accents.
+   Every colour lives here as an HSL token; light on :root, dark on .dark (next-themes). */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
+    /* shadcn roles */
+    --background: 216 38% 95%;
+    --foreground: 221 51% 16%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
+    --card-foreground: 221 51% 16%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 221 51% 16%;
+    --primary: 350 85% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 38% 97%;
+    --secondary-foreground: 221 51% 16%;
+    --muted: 220 38% 97%;
+    --muted-foreground: 220 22% 35%;
+    --accent: 220 38% 97%;
+    --accent-foreground: 221 51% 16%;
+    --destructive: 350 85% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 30% 88%;
+    --input: 217 30% 88%;
+    --ring: 222 64% 47%;
+    --radius: 0.25rem;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* career-lines roles */
+    --ink: 221 51% 16%;
+    --ink-2: 220 22% 35%;
+    --ink-3: 222 18% 44%;
+    --surface-2: 220 38% 97%;
+    --station: 0 0% 100%;
+    --field: 0 0% 100%;
+    --line-red: 350 85% 42%;
+    --line-teal: 175 100% 28%;
+    --line-blue: 222 64% 47%;
+    --line-amber: 39 82% 49%;
+    --red-ink: 350 87% 36%;
+    --red-soft: 351 70% 95%;
+    --amber-ink: 39 100% 27%;
+    --good: 162 75% 27%;
+    --good-soft: 152 42% 92%;
+    --board: 221 51% 16%;
+    --board-fg: 40 89% 68%;
+    --board-dim: 219 44% 78%;
+    --shadow: 0 1px 2px hsl(221 51% 16% / 0.06), 0 10px 30px -12px hsl(221 51% 16% / 0.14);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 223 47% 7%;
+    --foreground: 220 35% 93%;
+    --card: 221 41% 12%;
+    --card-foreground: 220 35% 93%;
+    --popover: 221 41% 12%;
+    --popover-foreground: 220 35% 93%;
+    --primary: 353 67% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 221 41% 16%;
+    --secondary-foreground: 220 35% 93%;
+    --muted: 221 41% 16%;
+    --muted-foreground: 220 22% 75%;
+    --accent: 221 41% 16%;
+    --accent-foreground: 220 35% 93%;
+    --destructive: 353 67% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 221 33% 22%;
+    --input: 221 33% 22%;
+    --ring: 222 100% 78%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --ink: 220 35% 93%;
+    --ink-2: 220 22% 75%;
+    --ink-3: 220 20% 64%;
+    --surface-2: 221 41% 16%;
+    --station: 223 47% 7%;
+    --field: 222 44% 10%;
+    --line-red: 353 81% 60%;
+    --line-teal: 175 79% 37%;
+    --line-blue: 221 83% 66%;
+    --line-amber: 39 88% 59%;
+    --red-ink: 353 100% 76%;
+    --red-soft: 340 45% 16%;
+    --amber-ink: 40 89% 68%;
+    --good: 157 63% 53%;
+    --good-soft: 161 51% 12%;
+    --board: 221 41% 16%;
+    --board-fg: 39 88% 59%;
+    --board-dim: 220 20% 64%;
+    --shadow: 0 1px 0 hsl(0 0% 100% / 0.03), 0 12px 30px -14px hsl(0 0% 0% / 0.6);
+    color-scheme: dark;
   }
 }
 
@@ -96,8 +99,158 @@
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
   }
+  h1, h2, h3 {
+    @apply font-display;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* small uppercase label */
+  .eyebrow {
+    @apply font-mono text-xs uppercase tracking-[0.08em] text-ink-3;
+  }
+  /* round line bullet (CS, ST, DX…) */
+  .bullet {
+    @apply inline-grid h-6 w-6 shrink-0 place-items-center rounded-full font-mono text-[10px] font-bold text-white;
+    background: var(--c, hsl(var(--line-red)));
+  }
+
+  /* ---------- background metro map ---------- */
+  .metro { @apply pointer-events-none fixed inset-0 z-0 overflow-hidden; transition: opacity .8s; }
+  .metro svg { @apply block h-full w-full; transform-origin: 50% 60%; transition: transform 1s cubic-bezier(.2,.7,.2,1); }
+  .metro .line { fill: none; stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
+  .metro .st { fill: hsl(var(--station)); stroke: hsl(var(--ink)); stroke-width: 3.5; }
+  .metro .lbl { font: 500 15px theme(fontFamily.mono); fill: hsl(var(--ink-2)); letter-spacing: .04em; text-transform: uppercase; transition: opacity .6s; }
+  .metro .train { fill: hsl(var(--line-red)); stroke: hsl(var(--station)); stroke-width: 4; }
+  .metro .rose-ring { fill: hsl(var(--station)); stroke: hsl(var(--ink)); stroke-width: 3; }
+  .metro .rose-tick { stroke: hsl(var(--ink)); stroke-width: 2; }
+  .metro .rose-a { fill: hsl(var(--ink)); }
+  .metro .rose-b { fill: hsl(var(--ink-3)); }
+  .metro .rose-n { font: 700 34px theme(fontFamily.display); fill: hsl(var(--ink)); }
+  .metro .needle { transform-box: view-box; transform-origin: 1290px 790px; transform: rotate(-24deg); }
+  .metro .needle-n { fill: hsl(var(--line-red)); }
+  .metro .needle-s { fill: hsl(var(--ink-2)); }
+  .metro .hub { fill: hsl(var(--line-amber)); stroke: hsl(var(--ink)); stroke-width: 3; }
+
+  /* hero: login page. Tilted map, lines draw in, clear zone behind the headline */
+  .metro--hero svg { transform: perspective(1500px) rotateX(calc(14deg + var(--ty, 0deg))) rotateY(var(--tx, 0deg)) rotateZ(-3deg) scale(1.22); }
+  .metro--hero { --m: radial-gradient(ellipse 40% 54% at 27% 50%, transparent 0, transparent 74%, #000 100%); -webkit-mask-image: var(--m); mask-image: var(--m); }
+  /* calm: inner pages. Faint, edges only, no labels/train/compass */
+  .metro--calm { opacity: .32; --m: linear-gradient(90deg, #000 0, transparent 14%, transparent 86%, #000 100%); -webkit-mask-image: var(--m); mask-image: var(--m); }
+  .metro--calm .lbl, .metro--calm .train, .metro--calm .rose { opacity: 0; }
+  @media (max-width: 900px) {
+    .metro--hero { opacity: .1; -webkit-mask-image: none; mask-image: none; }
+    .metro--calm { display: none; }
+    .metro .lbl { display: none; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .metro--hero .line { animation: draw 2.4s cubic-bezier(.6,0,.2,1) both; }
+    .metro--hero .line:nth-of-type(2) { animation-delay: .25s; }
+    .metro--hero .line:nth-of-type(3) { animation-delay: .45s; }
+    .metro--hero .line:nth-of-type(4) { animation-delay: .65s; }
+    .metro--hero .needle { animation: swing 2.8s cubic-bezier(.25,.9,.3,1) 1.2s both; }
+  }
+
+  /* ---------- page shell ---------- */
+  .topbar { @apply sticky top-0 z-20 border-b bg-card; }
+  .topbar::before { content: ""; display: block; height: 4px; background: linear-gradient(90deg, hsl(var(--line-red)) 0 58%, hsl(var(--line-amber)) 58% 72%, hsl(var(--line-teal)) 72% 86%, hsl(var(--line-blue)) 86%); }
+  /* news block: the card style used everywhere */
+  .news-block { @apply rounded-sm bg-card text-card-foreground; border-top: 3px solid hsl(var(--ink)); box-shadow: var(--shadow); }
+
+  /* ---------- station tabs ---------- */
+  .tabline { @apply relative flex overflow-x-auto pt-1; }
+  .tabline::before { content: ""; position: absolute; left: 18px; right: 18px; top: 19px; height: 6px; border-radius: 3px; background: hsl(var(--border)); }
+  .tabline .prog { position: absolute; left: 18px; top: 19px; height: 6px; border-radius: 3px; background: hsl(var(--line-red)); transition: width .45s cubic-bezier(.3,.7,.2,1); }
+  .tabline .tab { @apply relative z-[1] flex min-w-0 flex-1 cursor-pointer flex-col items-start gap-2 bg-transparent pb-1 font-semibold text-ink-2; }
+  .tabline .tab:nth-child(3) { @apply items-center; }
+  .tabline .tab:last-child { @apply items-end; }
+  .tabline .st { @apply grid h-9 w-9 place-items-center rounded-full; background: hsl(var(--station)); border: 5px solid hsl(var(--border)); transition: border-color .3s, transform .3s; }
+  .tabline .st svg { @apply h-[15px] w-[15px] text-ink-3; }
+  .tabline .tab[aria-selected="true"] { @apply text-ink; }
+  .tabline .tab[aria-selected="true"] .st, .tabline .tab.passed .st { border-color: hsl(var(--line-red)); }
+  .tabline .tab[aria-selected="true"] .st { transform: scale(1.12); }
+  .tabline .tab[aria-selected="true"] .st svg { color: hsl(var(--line-red)); }
+
+  /* ---------- line-segment bar chart ---------- */
+  .bars { @apply m-0 grid list-none gap-3.5 p-0; }
+  .bars li { @apply -m-1 grid items-center gap-3 rounded p-1; grid-template-columns: minmax(90px, 38%) minmax(0, 1fr) 64px; }
+  .bars li:hover, .bars li:focus-visible { background: hsl(var(--surface-2)); }
+  .bars .b-label { @apply truncate text-sm font-medium; }
+  .bars .b-val { @apply text-right text-sm font-semibold tabular-nums; }
+  .bars .b-track { position: relative; height: var(--h, 10px); border-radius: 999px; background: hsl(var(--surface-2)); box-shadow: inset 0 0 0 1px hsl(var(--border)); }
+  .bars .b-fill { position: absolute; inset: 0 auto 0 0; width: var(--w); border-radius: 999px; background: var(--c); transform-origin: left; }
+  .bars .b-dot { display: none; position: absolute; top: 50%; left: var(--w); width: 14px; height: 14px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--c); border: 3px solid hsl(var(--card)); }
+  .bars--thin { --h: 4px; }
+  .bars--thin .b-track { background: hsl(var(--border)); box-shadow: none; }
+  .bars--thin .b-dot { display: block; }
+  @media (prefers-reduced-motion: no-preference) {
+    .bars .b-fill { animation: grow .8s cubic-bezier(.2,.7,.2,1) both; }
+    .bars .b-dot { animation: pop .4s .6s both; }
+  }
+  @media (max-width: 560px) {
+    .bars li { grid-template-columns: 1fr 56px; grid-template-areas: "l v" "t t"; row-gap: 6px; }
+    .bars .b-label { grid-area: l; } .bars .b-val { grid-area: v; } .bars .b-track { grid-area: t; }
+  }
+
+  /* ---------- chips: filled station = have, hollow = need ---------- */
+  .chip { @apply inline-flex items-center gap-[7px] rounded-sm border px-[11px] py-[5px] text-[13px] font-medium leading-tight; background: hsl(var(--surface-2)); }
+  .chip::before { content: ""; width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--d, hsl(var(--line-red))); border: 2px solid var(--d, hsl(var(--line-red))); }
+  .chip--have { --d: hsl(var(--good)); background: hsl(var(--good-soft)); border-color: transparent; }
+  .chip--need { --d: hsl(var(--line-amber)); }
+  .chip--need::before { background: transparent; }
+  .chip--mine { --d: hsl(var(--line-red)); background: hsl(var(--red-soft)); border-color: transparent; }
+  .chip button { @apply -mr-1.5 inline-grid h-[22px] w-[22px] place-items-center rounded-full text-ink-2; }
+  .chip button:hover { @apply bg-card; color: hsl(var(--red-ink)); }
+
+  /* ---------- skill station list ---------- */
+  .stations { @apply relative m-0 list-none p-0; }
+  .stations::before { content: ""; position: absolute; left: 10px; top: 12px; bottom: 12px; width: 4px; border-radius: 2px; background: var(--c); }
+  .stations li { @apply relative grid items-center gap-2.5 py-1.5; grid-template-columns: 24px minmax(0, 1fr) auto; }
+  .stations .s { @apply relative z-[1] h-6 w-6 rounded-full; background: hsl(var(--station)); border: 4px solid var(--c); }
+  .stations li.on .s { background: var(--c); }
+
+  /* ---------- best-match gauge (compass needle) ---------- */
+  .dial .arc { fill: none; stroke: hsl(var(--surface-2)); stroke-width: 11; stroke-linecap: round; }
+  .dial .arcv { fill: none; stroke: hsl(var(--line-teal)); stroke-width: 11; stroke-linecap: round; }
+  .dial text { font: 500 10px theme(fontFamily.mono); fill: hsl(var(--ink-3)); }
+  .dial .cap { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
+  .dial .nd { fill: hsl(var(--line-red)); transform-box: view-box; transform-origin: 75px 75px; transform: rotate(var(--r)); }
+  .dial .hb { fill: hsl(var(--line-amber)); stroke: hsl(var(--ink)); stroke-width: 2; }
+  @media (prefers-reduced-motion: no-preference) {
+    .dial .nd { animation: dswing 1.9s cubic-bezier(.2,1.6,.4,1) .2s both; }
+  }
+
+  /* ---------- departures board ---------- */
+  .board { @apply flex overflow-hidden whitespace-nowrap; background: hsl(var(--board)); color: hsl(var(--board-fg)); }
+  .board .tk { @apply inline-flex gap-[52px] py-2.5 pl-6; }
+  .board .tk span { @apply font-mono text-[13px] font-medium uppercase tracking-[0.06em]; }
+  .board .tk i { @apply ml-2.5 not-italic; color: hsl(var(--board-dim)); }
+  .board:hover .tk { animation-play-state: paused; }
+  @media (prefers-reduced-motion: no-preference) {
+    .board .tk { animation: tick 75s linear infinite; }
+  }
+
+  /* headline words rise in one after another */
+  .rv span { display: inline-block; }
+  @media (prefers-reduced-motion: no-preference) {
+    .rv span { animation: rise .7s cubic-bezier(.2,.7,.2,1) calc(var(--i) * 110ms) both; }
+    .fade > * { animation: rise .45s cubic-bezier(.2,.7,.2,1) both; }
+  }
+
+  @keyframes draw { from { stroke-dashoffset: 1; } }
+  @keyframes swing { 0% { transform: rotate(140deg); } 38% { transform: rotate(-70deg); } 60% { transform: rotate(-6deg); } 78% { transform: rotate(-34deg); } 90% { transform: rotate(-20deg); } 100% { transform: rotate(-24deg); } }
+  @keyframes dswing { from { transform: rotate(-95deg); } }
+  @keyframes grow { from { transform: scaleX(0); } }
+  @keyframes pop { from { opacity: 0; } }
+  @keyframes rise { from { opacity: .001; transform: translateY(10px); } }
+  @keyframes tick { to { transform: translateX(-50%); } }
 }

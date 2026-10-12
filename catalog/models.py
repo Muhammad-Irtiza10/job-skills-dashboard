@@ -167,6 +167,12 @@ class JobPosting(models.Model):
     )
     date_posted = models.DateField(null=True, blank=True)
 
+    # live jobs from the JSearch API (blank for older scraped postings)
+    source = models.CharField(max_length=100, blank=True, help_text="Where the posting comes from, e.g. LinkedIn")
+    url = models.URLField(max_length=1000, blank=True, help_text="Link to the original posting")
+    external_id = models.CharField(max_length=500, null=True, blank=True, unique=True, help_text="JSearch job_id")
+    fetched_at = models.DateTimeField(null=True, blank=True)
+
     skills = models.ManyToManyField(
         Skill,
         related_name='job_postings',
@@ -208,6 +214,7 @@ class StudentProfile(models.Model):
     phone_primary   = models.CharField(max_length=20, blank=True)
     phone_secondary = models.CharField(max_length=20, blank=True)
     phone_work      = models.CharField(max_length=20, blank=True)
+    avatar          = models.ImageField(upload_to="avatars/", blank=True, null=True)
 
     def __str__(self):
         return self.user.get_full_name() or self.user.username

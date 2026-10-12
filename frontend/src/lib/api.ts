@@ -22,7 +22,9 @@
 
 // src/lib/api.ts
 
-export const API_BASE = "http://127.0.0.1:8000/api";
+// Local dev talks to Django directly; the container build sets VITE_API_BASE=/api
+// so the browser calls its own site and nginx passes the request on to the backend.
+export const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api";
 
 export async function apiFetch(path: string, opts: RequestInit = {}) {
   const token = localStorage.getItem("apiToken");
@@ -47,6 +49,19 @@ export async function apiFetch(path: string, opts: RequestInit = {}) {
     const detail = json && (json.detail || Object.values(json).flat().join("; "));
     throw new Error(`API ${res.status}${detail ? `: ${detail}` : ""}`);
   }
+  return json;
+}
+
+// Same as apiFetch but sends a file as multipart form data (the browser sets the Content-Type).
+export async function apiUpload(path: string, form: FormData) {
+  const token = localStorage.getItem("apiToken");
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Token ${token}` } : {},
+    body: form,
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(json?.detail || `Upload failed (${res.status})`);
   return json;
 }
 

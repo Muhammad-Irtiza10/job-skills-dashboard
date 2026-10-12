@@ -1,0 +1,34 @@
+# Serves the built React app and forwards API traffic to Django.
+# ${BACKEND_URL} is filled in from the environment when the container starts.
+
+# keep "https" when a load balancer in front of us (e.g. Azure) already ended the TLS connection
+map $http_x_forwarded_proto $forwarded_proto {
+    default $http_x_forwarded_proto;
+    ""      $scheme;
+}
+
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+    client_max_body_size 3m;  # profile photos are limited to 2 MB
+
+    location ~ ^/(api|media|admin|static)/ {
+        proxy_pass ${BACKEND_URL};
+        proxy_ssl_server_name on;
+        proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_read_timeout 60s;
+    }
+
+    # built JS/CSS have content hashes in their names, so they can be cached for a long time
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # every other path is a page of the React app
+    location / {
+        try_files $uri /index.html;
+    }
+}
