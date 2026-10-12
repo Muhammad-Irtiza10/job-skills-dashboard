@@ -34,6 +34,8 @@ The Docker database starts empty. To copy in everything from your normal local d
 docker compose cp local-data.backup db:/tmp/local-data.backup
 docker compose exec db pg_restore -U skillgap -d skillgap --no-owner --no-privileges --clean --if-exists /tmp/local-data.backup
 docker compose cp media/. backend:/app/media      # profile photos, if you have any
+docker compose exec -u root backend chown -R app /app/media      # the app's user owns the photos
+docker compose exec -u root backend chmod -R u+rwX /app/media    # ...and may write there (cp keeps Windows read-only flags)
 ```
 
 `*.backup` files are ignored by git (they contain user accounts).

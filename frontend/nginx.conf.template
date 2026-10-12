@@ -15,7 +15,7 @@ server {
     location ~ ^/(api|media|admin|static)/ {
         proxy_pass ${BACKEND_URL};
         proxy_ssl_server_name on;
-        proxy_set_header X-Forwarded-Host  $host;
+        proxy_set_header X-Forwarded-Host  $http_host;  # includes the port, e.g. localhost:8081
         proxy_set_header X-Forwarded-Proto $forwarded_proto;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_read_timeout 60s;
