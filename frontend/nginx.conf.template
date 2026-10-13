@@ -14,6 +14,8 @@ server {
 
     location ~ ^/(api|media|admin|static)/ {
         proxy_pass ${BACKEND_URL};
+        proxy_http_version 1.1;  # Azure's ingress rejects nginx's default HTTP/1.0 with "426 Upgrade Required"
+        proxy_set_header Connection "";
         proxy_ssl_server_name on;
         proxy_set_header X-Forwarded-Host  $http_host;  # includes the port, e.g. localhost:8081
         proxy_set_header X-Forwarded-Proto $forwarded_proto;
