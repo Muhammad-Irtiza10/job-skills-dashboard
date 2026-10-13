@@ -190,6 +190,9 @@ MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", MEDIA_ROOT))
 # Django serves uploaded photos itself. ponytail: fine for one small instance; move to Azure Blob
 # Storage (django-storages) if several instances run or uploads grow.
 SERVE_MEDIA = os.environ.get("SERVE_MEDIA", "true").lower() == "true"
+# Don't chmod uploaded files: Azure Files (SMB) refuses permission changes ("Operation not permitted")
+FILE_UPLOAD_PERMISSIONS = None
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = None
 
 # Email (password reset). Values come from environment variables or a local .env file
 # (never committed). Without EMAIL_HOST, emails are saved as files in sent_emails/ instead.
