@@ -73,6 +73,12 @@ def clean_location(job: dict) -> str:
     return (job.get("job_location") or "").split("•")[0].strip()
 
 
+def safe_url(url: str | None) -> str:
+    """Only plain web links. Anything else (e.g. "javascript:…") would run in the student's browser."""
+    url = (url or "").strip()
+    return url if urllib.parse.urlsplit(url).scheme in ("http", "https") else ""
+
+
 def to_posting(job: dict, today: date | None = None) -> dict | None:
     """Map one API job to JobPosting field values. None when it lacks the basics."""
     if not job.get("job_id") or not job.get("job_title"):
@@ -83,7 +89,7 @@ def to_posting(job: dict, today: date | None = None) -> dict | None:
         "company_name": (job.get("employer_name") or "")[:200],
         "location": clean_location(job)[:200],
         "source": (job.get("job_publisher") or "")[:100],
-        "url": (job.get("job_apply_link") or job.get("job_google_link") or "")[:1000],
+        "url": (safe_url(job.get("job_apply_link")) or safe_url(job.get("job_google_link")))[:1000],
         "date_posted": posted_date(job, today),
         "raw_description": job.get("job_description") or "",
     }

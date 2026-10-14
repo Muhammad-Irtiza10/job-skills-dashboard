@@ -1,3 +1,4 @@
+import logging
 from io import BytesIO
 from uuid import uuid4
 
@@ -44,6 +45,7 @@ from rest_framework import filters
 from rest_framework.authtoken.views import ObtainAuthToken
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 class SkillListCreate(generics.ListCreateAPIView):
     queryset = Skill.objects.all()
@@ -106,6 +108,7 @@ class ProfileAvatar(APIView):
     parser_classes = [MultiPartParser]
     FORMATS = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}
     MAX_SIDE = 512
+    MAX_PIXELS = 25_000_000  # a small file can still claim huge dimensions; refuse before decoding it
 
     def post(self, request):
         upload = request.FILES.get("avatar")
@@ -114,7 +117,11 @@ class ProfileAvatar(APIView):
         if upload.size > settings.AVATAR_MAX_BYTES:
             return Response({"detail": "Image must be 2 MB or smaller."}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            Image.open(upload).verify()  # rejects files that only pretend to be images
+            probe = Image.open(upload)  # reads only the header, not the pixels
+            width, height = probe.size
+            if width * height > self.MAX_PIXELS:
+                return Response({"detail": "Image dimensions are too large."}, status=status.HTTP_400_BAD_REQUEST)
+            probe.verify()  # rejects files that only pretend to be images
             upload.seek(0)
             img = Image.open(upload)
             fmt = img.format
@@ -156,7 +163,8 @@ class JobSearch(generics.ListAPIView):
           - ?title=<substring>
           - ?job_field=<exact name of job field>
         """
-        qs = JobPosting.objects.all()
+        # load each job's field and skills in bulk (otherwise 2 extra queries per job)
+        qs = JobPosting.objects.select_related("job_field").prefetch_related("skills")
         title = self.request.query_params.get("title", "").strip()
         job_field = self.request.query_params.get("job_field", "").strip()
         if title:
@@ -323,14 +331,18 @@ class PasswordResetRequest(APIView):
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = default_token_generator.make_token(user)
             link = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password/{uid}/{token}"
-            send_mail(
-                "Reset your CareerPath Analyzer password",
-                f"Hi {user.first_name or 'there'},\n\n"
-                f"Use this link to choose a new password. It works once and expires in 1 hour:\n{link}\n\n"
-                "If you didn't ask for this, you can ignore this email.",
-                None,
-                [user.email],
-            )
+            try:
+                send_mail(
+                    "Reset your CareerPath Analyzer password",
+                    f"Hi {user.first_name or 'there'},\n\n"
+                    f"Use this link to choose a new password. It works once and expires in 1 hour:\n{link}\n\n"
+                    "If you didn't ask for this, you can ignore this email.",
+                    None,
+                    [user.email],
+                )
+            except Exception:
+                # log it, but answer exactly as for an unknown email so failures don't reveal real accounts
+                logger.exception("Password reset email could not be sent")
         return Response({"detail": "If an account exists for that email, a reset link is on its way."})
 
 

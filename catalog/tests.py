@@ -14,7 +14,8 @@ MEDIA = tempfile.mkdtemp()
 
 def image_file(name="me.png", size=(1200, 800), fmt="PNG"):
     buf = BytesIO()
-    Image.new("RGB", size, (200, 16, 46)).save(buf, format=fmt)
+    big = size[0] * size[1] > 10_000_000
+    (Image.new("1", size) if big else Image.new("RGB", size, (200, 16, 46))).save(buf, format=fmt)
     return SimpleUploadedFile(name, buf.getvalue(), content_type=f"image/{fmt.lower()}")
 
 
@@ -142,3 +143,54 @@ class JSearchHelperTests(APITestCase):
         from catalog.jsearch import build_skill_index, match_skills
         index = build_skill_index([(1, "Teamwork"), (2, "teamwork"), (3, "Technology"), (4, "Power BI")])
         self.assertEqual(set(match_skills("teamwork, technology and power bi", index)), {1, 4})
+
+
+class ReviewFixTests(APITestCase):
+    """Regression tests for the pre-merge code review findings."""
+
+    def test_job_links_must_be_web_links(self):
+        from catalog.jsearch import to_posting
+        bad = to_posting({"job_id": "a", "job_title": "t", "job_apply_link": "javascript:alert(document.cookie)"})
+        self.assertEqual(bad["url"], "")
+        fallback = to_posting({"job_id": "b", "job_title": "t", "job_apply_link": "data:text/html,x",
+                               "job_google_link": "https://www.google.com/search?q=job"})
+        self.assertEqual(fallback["url"], "https://www.google.com/search?q=job")
+
+    def test_job_list_query_count_does_not_grow_with_jobs(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        from catalog.models import JobField, JobPosting, Skill
+        user = User.objects.create_user("q@example.com", "q@example.com", "pass-1234-word")
+        self.client.force_authenticate(user)
+        field = JobField.objects.create(name="Field")
+        skills = [Skill.objects.create(name=f"s{i}") for i in range(3)]
+
+        def count():
+            with CaptureQueriesContext(connection) as q:
+                self.assertEqual(self.client.get("/api/jobs/").status_code, 200)
+            return len(q)
+
+        JobPosting.objects.create(title="one", job_field=field).skills.set(skills)
+        few = count()
+        for i in range(5):
+            JobPosting.objects.create(title=f"more {i}", job_field=field).skills.set(skills)
+        self.assertEqual(count(), few)
+
+    @override_settings(MEDIA_ROOT=MEDIA)
+    def test_avatar_rejects_huge_dimensions(self):
+        user = User.objects.create_user("big@example.com", "big@example.com", "pass-1234-word")
+        self.client.force_authenticate(user)
+        huge = image_file("huge.png", size=(6000, 5000))  # 30 megapixels, still a small file
+        r = self.client.post("/api/profile/avatar/", {"avatar": huge}, format="multipart")
+        self.assertEqual(r.status_code, 400)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_reset_reply_is_the_same_when_email_fails(self):
+        from unittest import mock
+        from django.core.cache import cache
+        cache.clear()
+        User.objects.create_user("r@example.com", "r@example.com", "pass-1234-word")
+        with mock.patch("catalog.views.send_mail", side_effect=OSError("smtp down")):
+            real = self.client.post("/api/password-reset/", {"email": "r@example.com"})
+        unknown = self.client.post("/api/password-reset/", {"email": "nobody@example.com"})
+        self.assertEqual((real.status_code, real.data), (unknown.status_code, unknown.data))

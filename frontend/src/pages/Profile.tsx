@@ -269,7 +269,7 @@ const Profile: React.FC = () => {
         <Button
           variant="outline"
           onClick={() => {
-            localStorage.removeItem("apiToken")
+            setToken(null)
             navigate("/")
           }}
         >

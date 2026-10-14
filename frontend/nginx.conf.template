@@ -23,14 +23,21 @@ server {
         proxy_read_timeout 60s;
     }
 
+    # Security headers for files nginx serves itself; Django already sends its own on /api etc.
+    # (nginx drops server-level add_header in any location that has its own, so they are repeated here.)
+
     # built JS/CSS have content hashes in their names, so they can be cached for a long time
     location /assets/ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+        add_header X-Content-Type-Options nosniff always;
     }
 
     # every other path is a page of the React app
     location / {
         try_files $uri /index.html;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
     }
 }

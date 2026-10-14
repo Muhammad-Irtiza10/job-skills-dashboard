@@ -32,11 +32,13 @@ import {
   LogOut,
 } from 'lucide-react'
 import AppHeader from '@/components/AppHeader'
+import { useAuth } from '@/App'
 import { BarList } from '@/components/charts'
 import { useNavigate } from 'react-router-dom'
 
 const FacultyDashboard: React.FC = () => {
   const navigate = useNavigate()
+  const { setToken } = useAuth()
   const [selectedMajor, setSelectedMajor] = useState('Computer Science')
   const [selectedJobField, setSelectedJobField] = useState('Software Development')
 
@@ -113,7 +115,7 @@ const FacultyDashboard: React.FC = () => {
     <div className="min-h-screen pb-16">
       {/* Header */}
       <AppHeader subtitle="Faculty analytics">
-        <Button variant="outline" onClick={() => navigate('/')}>
+        <Button variant="outline" onClick={() => { setToken(null); navigate('/') }}>
           <LogOut /><span className="hidden sm:inline">Logout</span>
         </Button>
       </AppHeader>

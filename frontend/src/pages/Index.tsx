@@ -9,8 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Brain, TrainFront } from 'lucide-react';
 import AppHeader from '@/components/AppHeader';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@radix-ui/react-select';
-import { validateHeaderName } from 'http';
 
 
 const Index: React.FC = () => {

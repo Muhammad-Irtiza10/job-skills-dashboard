@@ -45,6 +45,8 @@ import { apiFetch } from '@/lib/api'
 import AppHeader from '@/components/AppHeader'
 import { BarList, EmptyNote, MatchDial } from '@/components/charts'
 import { matchPctFor as sharedMatchPct, haveFor as sharedHaveFor } from '@/lib/match'
+import { isWebUrl } from '@/lib/utils'
+import { useAuth } from '@/App'
 
 // --- Types for fetched data ---
 interface Major {
@@ -163,6 +165,7 @@ const SkillCard: React.FC<SkillCardProps> = ({
 
 const StudentDashboard: React.FC = () => {
   const navigate = useNavigate()
+  const { setToken } = useAuth()
   const [tab, setTab] = useState<Tab>('overview')
   const [firstName, setFirstName] = useState('')
 
@@ -199,7 +202,7 @@ const StudentDashboard: React.FC = () => {
         setFirstName(data.first_name || '')
       })
       .catch(() => {
-        localStorage.removeItem('apiToken')
+        setToken(null)
         navigate('/')
       })
       .finally(() => setLoadingProfile(false))
@@ -406,7 +409,7 @@ const StudentDashboard: React.FC = () => {
         <Button
           variant="outline"
           onClick={() => {
-            localStorage.removeItem('apiToken')
+            setToken(null) // clears the saved login and the in-memory one, so protected pages lock again
             navigate('/')
           }}
         >
@@ -717,7 +720,7 @@ const StudentDashboard: React.FC = () => {
                     {selectedJob.company_name}{selectedJob.source ? ` · via ${selectedJob.source}` : ''}
                     {selectedJob.date_posted ? ` · ${postedAgo(selectedJob.date_posted)}` : ''}
                   </p>
-                  {selectedJob.url && (
+                  {isWebUrl(selectedJob.url) && (
                     <a
                       href={selectedJob.url}
                       target="_blank"
@@ -784,14 +787,16 @@ const StudentDashboard: React.FC = () => {
                                       Relevance: {Math.round(cert.relevance_score * 100)}%
                                     </span>
                                   </div>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="justify-self-start"
-                                    onClick={() => window.open(cert.url, '_blank')}
-                                  >
-                                    View Course <ArrowUpRight />
-                                  </Button>
+                                  {isWebUrl(cert.url) && (
+                                    <a
+                                      href={cert.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`${buttonVariants({ size: 'sm', variant: 'outline' })} justify-self-start`}
+                                    >
+                                      View Course <ArrowUpRight />
+                                    </a>
+                                  )}
                                 </div>
                               ))
                             )}
