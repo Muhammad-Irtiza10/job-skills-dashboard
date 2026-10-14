@@ -75,10 +75,8 @@ const JobsTab: React.FC<Props> = ({
           ) : (
             <div className="grid gap-2.5">
               {jobs.map((job) => {
-                // build a Set of all your skill‐names (lowercased & trimmed)
-                const mySkills = new Set(
-                  userSkills.map((u) => u.name.toLowerCase().trim())
-                );
+                // same rule as the match % and the analysis panel, so a chip is never green here but "needed" there
+                const have = haveFor(job, userSkills)
                 const pct = matchPctFor(job, userSkills)
 
                 return (
@@ -104,22 +102,11 @@ const JobsTab: React.FC<Props> = ({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      {(job.skills || []).map((sk) => {
-                        // split the job‐skill into words/tokens
-                        const tokens = sk.name
-                          .toLowerCase()
-                          .split(/\W+/)
-                          .filter(Boolean);
-
-                        // check if any token is one of your skills
-                        const isMatch = tokens.some((t) => mySkills.has(t));
-
-                        return (
-                          <span key={sk.id} className={`chip ${isMatch ? 'chip--have' : 'chip--need'}`}>
-                            {sk.name}
-                          </span>
-                        );
-                      })}
+                      {(job.skills || []).map((sk) => (
+                        <span key={sk.id} className={`chip ${have.includes(sk) ? 'chip--have' : 'chip--need'}`}>
+                          {sk.name}
+                        </span>
+                      ))}
                     </div>
                   </button>
                 );
